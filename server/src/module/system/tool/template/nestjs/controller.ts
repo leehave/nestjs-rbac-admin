@@ -1,0 +1,55 @@
+import * as Lodash from 'lodash';
+export const controllerTem = (options) => {
+  const { BusinessName, businessName, functionName, moduleName, primaryKey } = options;
+  const serviceName = `${Lodash.upperFirst(BusinessName)}Service`;
+  const serviceInstance = `${businessName}Service`;
+  return `
+import { Controller, Get, Post, Put, Body, Query, Param, Delete } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { RequirePermission } from '../../../../../common/decorators/require-permission.decorator';
+import { ${serviceName} } from './${businessName}.service';
+import { Create${Lodash.upperFirst(BusinessName)}Dto, Update${Lodash.upperFirst(BusinessName)}Dto, List${Lodash.upperFirst(BusinessName)}Dto } from './dto/${businessName}.dto';
+
+@ApiTags('${functionName}')
+@Controller('${moduleName}/${businessName}')
+@ApiBearerAuth('Authorization')
+export class ${Lodash.upperFirst(BusinessName)}Controller {
+  constructor(private readonly ${serviceInstance}: ${serviceName}) {}
+
+  @ApiOperation({ summary: '${functionName}-创建' })
+  @RequirePermission('${moduleName}:${businessName}:add')
+  @Post()
+  create(@Body() body: Create${Lodash.upperFirst(BusinessName)}Dto) {
+    return this.${serviceInstance}.create(body);
+  }
+
+  @ApiOperation({ summary: '${functionName}-列表' })
+  @RequirePermission('${moduleName}:${businessName}:list')
+  @Get('list')
+  findAll(@Query() query: List${Lodash.upperFirst(BusinessName)}Dto) {
+    return this.${serviceInstance}.findAll(query);
+  }
+
+  @ApiOperation({ summary: '${functionName}-详情' })
+  @RequirePermission('${moduleName}:${businessName}:query')
+  @Get(':${primaryKey}')
+  findOne(@Param('${primaryKey}') ${primaryKey}: string) {
+    return this.${serviceInstance}.findOne(+${primaryKey});
+  }
+
+  @ApiOperation({ summary: '${functionName}-修改' })
+  @RequirePermission('${moduleName}:${businessName}:edit')
+  @Put()
+  update(@Body() body: Update${Lodash.upperFirst(BusinessName)}Dto) {
+    return this.${serviceInstance}.update(body);
+  }
+
+  @ApiOperation({ summary: '${functionName}-删除' })
+  @RequirePermission('${moduleName}:${businessName}:remove')
+  @Delete(':${primaryKey}')
+  remove(@Param('${primaryKey}') ${primaryKey}: string) {
+    const ${primaryKey}s = ${primaryKey}.split(',').map((${primaryKey}) => +${primaryKey});
+    return this.${serviceInstance}.remove(${primaryKey}s);
+  }
+}`;
+};

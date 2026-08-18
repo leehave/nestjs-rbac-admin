@@ -1,0 +1,968 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>nextjs-server API 调试工具</title>
+    <script src="./jquery-3.5.1.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            color: #1f2937;
+            background: #f3f6fb;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+        }
+
+        header {
+            padding: 20px 24px;
+            color: #fff;
+            background: linear-gradient(135deg, #2563eb, #0f766e);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+        }
+
+        header h1 {
+            margin: 0 0 8px;
+            font-size: 24px;
+        }
+
+        header p {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.86);
+            font-size: 14px;
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: 340px minmax(0, 1fr);
+            gap: 16px;
+            padding: 16px;
+        }
+
+        .card {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+            overflow: hidden;
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid #eef2f7;
+            background: #fbfdff;
+            font-weight: 700;
+        }
+
+        .card-body {
+            padding: 16px;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1.4fr 0.8fr 0.8fr auto auto;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .captcha-row {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .captcha-row .field {
+            min-width: 120px;
+        }
+
+        #captchaPreview {
+            display: none;
+            height: 40px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fff;
+        }
+
+        .field label,
+        .params label {
+            display: block;
+            margin-bottom: 6px;
+            color: #4b5563;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: #111827;
+            background: #fff;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
+        textarea {
+            min-height: 160px;
+            resize: vertical;
+            font-family: Consolas, Monaco, "Courier New", monospace;
+            line-height: 1.5;
+        }
+
+        button {
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: #fff;
+            background: #2563eb;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.12s, opacity 0.2s, background 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            opacity: 0.92;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button.secondary {
+            color: #1f2937;
+            background: #e5e7eb;
+        }
+
+        button.danger {
+            background: #dc2626;
+        }
+
+        button.success {
+            background: #059669;
+        }
+
+        button.warning {
+            background: #d97706;
+        }
+
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .side-tools {
+            display: grid;
+            gap: 10px;
+            padding: 12px;
+            border-bottom: 1px solid #eef2f7;
+        }
+
+        .api-list {
+            max-height: calc(100vh - 280px);
+            overflow: auto;
+            padding: 8px;
+        }
+
+        .api-item {
+            display: grid;
+            grid-template-columns: 58px minmax(0, 1fr);
+            gap: 8px;
+            width: 100%;
+            margin-bottom: 8px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 10px;
+            color: #111827;
+            background: #fff;
+            text-align: left;
+        }
+
+        .api-item:hover,
+        .api-item.active {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .api-title {
+            overflow: hidden;
+            font-size: 14px;
+            font-weight: 700;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .api-path {
+            overflow: hidden;
+            margin-top: 4px;
+            color: #6b7280;
+            font-family: Consolas, Monaco, "Courier New", monospace;
+            font-size: 12px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .method {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 24px;
+            border-radius: 999px;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .method.GET {
+            background: #059669;
+        }
+
+        .method.POST {
+            background: #2563eb;
+        }
+
+        .method.PATCH,
+        .method.PUT {
+            background: #d97706;
+        }
+
+        .method.DELETE {
+            background: #dc2626;
+        }
+
+        .main {
+            display: grid;
+            gap: 16px;
+        }
+
+        .endpoint-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .endpoint-head h2 {
+            margin: 0 0 8px;
+            font-size: 22px;
+        }
+
+        .desc {
+            margin: 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .url-preview {
+            margin-top: 12px;
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: #0f172a;
+            background: #f8fafc;
+            word-break: break-all;
+            font-family: Consolas, Monaco, "Courier New", monospace;
+            font-size: 13px;
+        }
+
+        .request-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .params {
+            display: grid;
+            gap: 12px;
+        }
+
+        .param-row {
+            display: grid;
+            grid-template-columns: minmax(110px, 0.8fr) minmax(0, 1.5fr);
+            gap: 10px;
+            align-items: center;
+        }
+
+        .param-name {
+            color: #374151;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .param-name small {
+            display: block;
+            margin-top: 3px;
+            color: #9ca3af;
+            font-weight: 400;
+        }
+
+        .empty {
+            border: 1px dashed #d1d5db;
+            border-radius: 10px;
+            padding: 14px;
+            color: #9ca3af;
+            background: #fafafa;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-top: 16px;
+        }
+
+        .toggle-auth {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #4b5563;
+            font-size: 13px;
+        }
+
+        .toggle-auth input {
+            width: auto;
+        }
+
+        .response-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 5px 10px;
+            color: #374151;
+            background: #f3f4f6;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .pill.ok {
+            color: #065f46;
+            background: #d1fae5;
+        }
+
+        .pill.err {
+            color: #991b1b;
+            background: #fee2e2;
+        }
+
+        pre {
+            min-height: 260px;
+            max-height: 520px;
+            margin: 0;
+            overflow: auto;
+            border-radius: 12px;
+            padding: 14px;
+            color: #d1d5db;
+            background: #111827;
+            font-family: Consolas, Monaco, "Courier New", monospace;
+            font-size: 13px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .hint {
+            margin-top: 10px;
+            color: #6b7280;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 1100px) {
+            .app,
+            .request-grid,
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .api-list {
+                max-height: 360px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>nextjs-server API 调试工具</h1>
+        <p>从 <code>public/openApi.json</code> 自动加载全量 Swagger 接口。访问地址：<code>/api-test/index.html</code>（需先启动服务且 <code>SWAGGER_ENABLED=true</code> 生成 openApi.json）。</p>
+    </header>
+
+    <div class="card" style="margin: 16px 16px 0;">
+        <div class="card-title">全局配置</div>
+        <div class="card-body">
+            <div class="config-grid">
+                <div class="field">
+                    <label for="baseUrl">服务地址</label>
+                    <input id="baseUrl" value="http://127.0.0.1:8181" placeholder="http://127.0.0.1:8181">
+                </div>
+                <div class="field">
+                    <label for="token">Bearer Token（登录后自动填入）</label>
+                    <input id="token" placeholder="未登录时可留空">
+                </div>
+                <div class="field">
+                    <label for="loginUsername">登录账号</label>
+                    <input id="loginUsername" value="admin" autocomplete="username">
+                </div>
+                <div class="field">
+                    <label for="loginPassword">登录密码</label>
+                    <input id="loginPassword" type="password" value="123456" autocomplete="current-password">
+                </div>
+                <div class="field">
+                    <label for="loginTenantId">租户 ID</label>
+                    <input id="loginTenantId" value="1" autocomplete="off">
+                </div>
+                <button id="quickLogin" class="success">登录并保存 Token</button>
+                <button id="clearToken" class="secondary">清空 Token</button>
+            </div>
+            <div class="captcha-row">
+                <div class="field">
+                    <label for="loginCaptchaCode">验证码</label>
+                    <input id="loginCaptchaCode" autocomplete="off" placeholder="先点刷新验证码">
+                </div>
+                <button id="refreshCaptcha" type="button" class="secondary">刷新验证码</button>
+                <img id="captchaPreview" alt="验证码" title="验证码">
+                <input type="hidden" id="loginCaptchaUuid">
+            </div>
+            <div class="hint">提示：请通过 <code>http://127.0.0.1:8181/api-test/index.html</code> 打开（同源可加载 openApi.json）。登录需验证码：先点「刷新验证码」，填写后点「登录并保存 Token」。若接口列表为空，请先启动服务并确保 Swagger 已生成 <code>public/openApi.json</code>。</div>
+        </div>
+    </div>
+
+    <main class="app">
+        <aside class="card">
+            <div class="card-title">
+                <span>接口列表</span>
+                <span id="apiCount" class="pill"></span>
+            </div>
+            <div class="side-tools">
+                <input id="searchApi" placeholder="搜索接口名称 / 路径 / 分组">
+                <select id="groupFilter">
+                    <option value="">全部分组</option>
+                </select>
+                <button id="reloadOpenApi" type="button" class="secondary" style="width:100%">重新加载 openApi.json</button>
+            </div>
+            <div id="apiList" class="api-list"><div class="empty">正在加载 openApi.json...</div></div>
+        </aside>
+
+        <section class="main">
+            <section class="card">
+                <div class="card-title">请求配置</div>
+                <div class="card-body">
+                    <div class="endpoint-head">
+                        <div>
+                            <h2 id="apiName"></h2>
+                            <p id="apiDesc" class="desc"></p>
+                        </div>
+                        <span id="apiMethod" class="method"></span>
+                    </div>
+                    <div id="urlPreview" class="url-preview"></div>
+
+                    <div class="request-grid" style="margin-top: 16px;">
+                        <div>
+                            <div class="card-title" style="margin: -1px -1px 0; border: 1px solid #eef2f7; border-radius: 12px 12px 0 0;">路径参数</div>
+                            <div id="pathParams" class="params" style="border: 1px solid #eef2f7; border-top: 0; border-radius: 0 0 12px 12px; padding: 14px;"></div>
+                        </div>
+                        <div>
+                            <div class="card-title" style="margin: -1px -1px 0; border: 1px solid #eef2f7; border-radius: 12px 12px 0 0;">Query 参数</div>
+                            <div id="queryParams" class="params" style="border: 1px solid #eef2f7; border-top: 0; border-radius: 0 0 12px 12px; padding: 14px;"></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 16px;">
+                        <label for="bodyEditor" style="display: block; margin-bottom: 8px; color: #4b5563; font-size: 12px; font-weight: 700;">JSON 请求体</label>
+                        <textarea id="bodyEditor" spellcheck="false"></textarea>
+                    </div>
+
+                    <div class="actions">
+                        <button id="sendRequest">发送请求</button>
+                        <button id="resetRequest" class="secondary">重置参数</button>
+                        <button id="copyCurl" class="secondary">复制 curl</button>
+                        <label class="toggle-auth">
+                            <input id="useToken" type="checkbox" checked>
+                            携带 Authorization: Bearer Token
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-title">
+                    <span>响应结果</span>
+                    <span class="response-meta">
+                        <span id="statusPill" class="pill">未请求</span>
+                        <span id="timePill" class="pill">耗时 -</span>
+                    </span>
+                </div>
+                <div class="card-body">
+                    <pre id="responseOutput">请选择接口后点击“发送请求”。</pre>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script src="./openapi-loader.js"></script>
+    <script>
+        $(function () {
+            var apis = [];
+            var currentIndex = 0;
+
+            restoreConfig();
+            loadApis(true);
+
+            $('#baseUrl, #token').on('input', function () {
+                saveConfig();
+                updateUrlPreview();
+            });
+
+            $('#searchApi, #groupFilter').on('input change', renderApiList);
+            $('#resetRequest').on('click', function () { selectApi(currentIndex); });
+            $('#sendRequest').on('click', sendCurrentRequest);
+            $('#quickLogin').on('click', quickLogin);
+            $('#refreshCaptcha').on('click', function () { fetchCaptcha(); });
+            $('#reloadOpenApi').on('click', function () { loadApis(false); });
+            $('#clearToken').on('click', function () {
+                $('#token').val('');
+                saveConfig();
+                setOutput('已清空 Token。');
+            });
+            $('#copyCurl').on('click', copyCurl);
+            $('#useToken').on('change', updateUrlPreview);
+
+            function loadApis(isInit) {
+                $('#apiList').html('<div class="empty">正在加载 openApi.json...</div>');
+                OpenApiLoader.loadOpenApiSpec(getBaseUrl()).then(function (list) {
+                    apis = list;
+                    $('#groupFilter').find('option:not(:first)').remove();
+                    renderGroupFilter();
+                    renderApiList();
+                    if (apis.length) {
+                        selectApi(0);
+                        setOutput('已加载 ' + apis.length + ' 个接口（来自 openApi.json）。');
+                    } else {
+                        setOutput('openApi.json 中没有接口定义。');
+                    }
+                }).catch(function (err) {
+                    apis = [];
+                    $('#apiCount').text('0 / 0');
+                    $('#apiList').html('<div class="empty">加载失败：' + err.message + '</div>');
+                    if (isInit) {
+                        setOutput('加载 openApi.json 失败：\n' + err.message);
+                    }
+                });
+            }
+
+            function restoreConfig() {
+                $('#baseUrl').val(localStorage.getItem('apiDemoBaseUrl') || 'http://127.0.0.1:8181');
+                $('#token').val(localStorage.getItem('apiDemoToken') || '');
+            }
+
+            function saveConfig() {
+                localStorage.setItem('apiDemoBaseUrl', $.trim($('#baseUrl').val()));
+                localStorage.setItem('apiDemoToken', $.trim($('#token').val()));
+            }
+
+            function renderGroupFilter() {
+                var groups = [];
+                $.each(apis, function (_, api) {
+                    if ($.inArray(api.group, groups) === -1) groups.push(api.group);
+                });
+                groups.sort(function (a, b) { return a.localeCompare(b, 'zh-CN'); });
+                $.each(groups, function (_, group) {
+                    $('#groupFilter').append($('<option>').val(group).text(group));
+                });
+            }
+
+            function renderApiList() {
+                var keyword = $.trim($('#searchApi').val()).toLowerCase();
+                var group = $('#groupFilter').val();
+                var $list = $('#apiList').empty();
+                var count = 0;
+
+                $.each(apis, function (index, api) {
+                    var haystack = [api.group, api.name, api.method, api.path, api.description].join(' ').toLowerCase();
+                    if (group && api.group !== group) return;
+                    if (keyword && haystack.indexOf(keyword) === -1) return;
+
+                    count += 1;
+                    var $item = $('<button type="button" class="api-item">')
+                        .toggleClass('active', index === currentIndex)
+                        .attr('data-index', index)
+                        .append($('<span class="method">').addClass(api.method).text(api.method))
+                        .append(
+                            $('<span>').append($('<span class="api-title">').text(api.name))
+                                .append($('<span class="api-path">').text(api.path))
+                        );
+                    $list.append($item);
+                });
+
+                $('#apiCount').text(count + ' / ' + apis.length);
+                $('.api-item').on('click', function () {
+                    selectApi(Number($(this).attr('data-index')));
+                    renderApiList();
+                });
+
+                if (!count && apis.length) {
+                    $list.append('<div class="empty">没有匹配的接口</div>');
+                }
+            }
+
+            function selectApi(index) {
+                if (!apis.length) return;
+                currentIndex = index;
+                var api = apis[index];
+                $('#apiName').text(api.name);
+                $('#apiDesc').text(api.description + ' · 分组：' + api.group);
+                $('#apiMethod').removeClass('GET POST PATCH PUT DELETE').addClass(api.method).text(api.method);
+                renderParams('#pathParams', api.pathParams, 'path');
+                renderParams('#queryParams', api.query, 'query');
+
+                var hasBody = ['POST', 'PUT', 'PATCH'].indexOf(api.method) >= 0;
+                if (hasBody) {
+                    $('#bodyEditor').prop('disabled', false).val(api.body ? JSON.stringify(api.body, null, 2) : '{}');
+                } else {
+                    $('#bodyEditor').prop('disabled', true).val('');
+                }
+
+                if (api.needsAuth) {
+                    $('#useToken').prop('checked', true);
+                }
+
+                updateUrlPreview();
+                setStatus(null, '-', '-');
+            }
+
+            function renderParams(selector, params, type) {
+                var $box = $(selector).empty();
+                if (!params || !params.length) {
+                    $box.append('<div class="empty">无参数</div>');
+                    return;
+                }
+                $.each(params, function (_, param) {
+                    var inputId = type + '-' + param.name;
+                    var $row = $('<div class="param-row">');
+                    var $name = $('<div class="param-name">')
+                        .text(param.name)
+                        .append($('<small>').text(param.description || ''));
+                    var $input = $('<input>')
+                        .attr('id', inputId)
+                        .attr('data-param-type', type)
+                        .attr('data-param-name', param.name)
+                        .val(param.value || '')
+                        .on('input', updateUrlPreview);
+                    $row.append($name).append($input);
+                    $box.append($row);
+                });
+            }
+
+            function getBaseUrl() {
+                return $.trim($('#baseUrl').val()).replace(/\/+$/, '');
+            }
+
+            function buildRequest() {
+                var api = apis[currentIndex];
+                var urlPath = api.path;
+                $('[data-param-type="path"]').each(function () {
+                    var name = $(this).attr('data-param-name');
+                    var value = encodeURIComponent($.trim($(this).val()));
+                    urlPath = urlPath.replace('{' + name + '}', value);
+                });
+
+                var query = [];
+                $('[data-param-type="query"]').each(function () {
+                    var value = $.trim($(this).val());
+                    if (value === '') return;
+                    query.push(encodeURIComponent($(this).attr('data-param-name')) + '=' + encodeURIComponent(value));
+                });
+
+                var url = getBaseUrl() + urlPath + (query.length ? '?' + query.join('&') : '');
+                var body = null;
+                if (['POST', 'PUT', 'PATCH'].indexOf(api.method) >= 0) {
+                    var bodyText = $.trim($('#bodyEditor').val());
+                    if (bodyText) {
+                        body = JSON.parse(bodyText);
+                    }
+                }
+
+                return { api: api, url: url, body: body };
+            }
+
+            function updateUrlPreview() {
+                if (!apis.length) return;
+                try {
+                    $('#urlPreview').text(buildRequest().url);
+                } catch (err) {
+                    $('#urlPreview').text('请求体 JSON 格式错误：' + err.message);
+                }
+            }
+
+            function sendCurrentRequest(done) {
+                var request;
+                try {
+                    request = buildRequest();
+                } catch (err) {
+                    setStatus(false, 'JSON 错误', '-');
+                    setOutput('请求体不是合法 JSON：\n' + err.message);
+                    return;
+                }
+
+                if (request.api.method === 'DELETE') {
+                    if (!window.confirm('当前是 DELETE 删除接口，请确认只在测试数据上执行。是否继续？')) return;
+                }
+
+                var startedAt = Date.now();
+                $('#sendRequest').prop('disabled', true).text('请求中...');
+                setStatus(null, '请求中', '-');
+                setOutput('请求中：' + request.api.method + ' ' + request.url);
+
+                $.ajax({
+                    type: request.api.method,
+                    url: request.url,
+                    data: request.body ? JSON.stringify(request.body) : undefined,
+                    contentType: request.body ? 'application/json; charset=utf-8' : undefined,
+                    dataType: 'json',
+                    headers: buildHeaders(),
+                    success: function (res, textStatus, xhr) {
+                        var elapsed = Date.now() - startedAt;
+                        var tokenSaved = applyAccessTokenFromResponse(res, request.api);
+                        var output = formatResponse(res, xhr);
+                        if (tokenSaved) {
+                            output += '\n\n已自动保存 access_token 到全局 Token。';
+                        } else if (isAuthEndpoint(request.api) && res && Number(res.code) !== 200) {
+                            output += '\n\n未保存 Token：' + (res.msg || res.message || '响应无 access_token');
+                            if (request.api.path === '/api/core/login') fetchCaptcha();
+                        }
+                        setStatus(true, xhr.status + ' ' + xhr.statusText, elapsed + 'ms');
+                        setOutput(output);
+                        if (typeof done === 'function') done(res, request);
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        var elapsed = Date.now() - startedAt;
+                        setStatus(false, (xhr.status || 'ERR') + ' ' + (xhr.statusText || textStatus), elapsed + 'ms');
+                        setOutput(formatError(xhr, textStatus, errorThrown));
+                        if (typeof done === 'function') done(null, request);
+                    },
+                    complete: function () {
+                        $('#sendRequest').prop('disabled', false).text('发送请求');
+                    }
+                });
+            }
+
+            function fetchCaptcha(done) {
+                $.ajax({
+                    type: 'GET',
+                    url: getBaseUrl() + '/api/core/captcha',
+                    dataType: 'json'
+                }).done(function (res) {
+                    var data = res && res.data;
+                    if (!data || !data.uuid) {
+                        setOutput('获取验证码失败：\n' + formatJson(res));
+                        return;
+                    }
+                    $('#loginCaptchaUuid').val(data.uuid);
+                    if (data.image) {
+                        $('#captchaPreview').attr('src', data.image).show();
+                    }
+                    $('#loginCaptchaCode').val('').focus();
+                    if (typeof done === 'function') done(data);
+                }).fail(function (xhr, textStatus, errorThrown) {
+                    setStatus(false, (xhr.status || 'ERR') + ' ' + (xhr.statusText || textStatus), '-');
+                    setOutput(formatError(xhr, textStatus, errorThrown));
+                });
+            }
+
+            function quickLogin() {
+                var loginIndex = findApiIndex('/api/core/login', 'POST');
+                if (loginIndex < 0) {
+                    setOutput('未在 openApi.json 中找到 POST /api/core/login');
+                    return;
+                }
+
+                var code = $.trim($('#loginCaptchaCode').val());
+                var uuid = $.trim($('#loginCaptchaUuid').val());
+                if (!uuid || !code) {
+                    fetchCaptcha(function () {
+                        setOutput('验证码已加载，请填写后再次点击「登录并保存 Token」。');
+                    });
+                    return;
+                }
+
+                var oldIndex = currentIndex;
+                selectApi(loginIndex);
+                $('#bodyEditor').val(JSON.stringify({
+                    username: $.trim($('#loginUsername').val()),
+                    password: $('#loginPassword').val(),
+                    tenant_id: Number($.trim($('#loginTenantId').val()) || 1),
+                    code: code,
+                    uuid: uuid
+                }, null, 2));
+                renderApiList();
+                sendCurrentRequest(function () {
+                    if (apis.length && oldIndex >= 0 && oldIndex !== loginIndex) {
+                        selectApi(oldIndex);
+                        renderApiList();
+                    }
+                });
+            }
+
+            function findApiIndex(path, method) {
+                for (var i = 0; i < apis.length; i += 1) {
+                    if (apis[i].path === path && apis[i].method === method) return i;
+                }
+                return -1;
+            }
+
+            function buildHeaders() {
+                var headers = {};
+                var token = $.trim($('#token').val());
+                if ($('#useToken').is(':checked') && token) {
+                    headers.Authorization = 'Bearer ' + token;
+                }
+                return headers;
+            }
+
+            function extractAccessToken(res) {
+                if (!res || typeof res !== 'object') return '';
+                if (res.data && typeof res.data === 'object') {
+                    if (res.data.access_token) return res.data.access_token;
+                    if (res.data.accessToken) return res.data.accessToken;
+                }
+                if (res.access_token) return res.access_token;
+                if (res.accessToken) return res.accessToken;
+                return '';
+            }
+
+            function isAuthEndpoint(api) {
+                if (!api || !api.path) return false;
+                return /\/core\/(login|refresh)$/.test(api.path);
+            }
+
+            function applyAccessTokenFromResponse(res, api) {
+                if (!isAuthEndpoint(api)) return false;
+                if (res.code !== undefined && Number(res.code) !== 200) return false;
+                var token = extractAccessToken(res);
+                if (!token) return false;
+                $('#token').val(token);
+                saveConfig();
+                return true;
+            }
+
+            function formatResponse(res, xhr) {
+                var headers = xhr.getAllResponseHeaders ? xhr.getAllResponseHeaders() : '';
+                return '响应头：\n' + (headers || '(无)') + '\n响应体：\n' + formatJson(res);
+            }
+
+            function formatError(xhr, textStatus, errorThrown) {
+                var response = xhr.responseJSON || xhr.responseText || null;
+                return formatJson({
+                    status: xhr.status,
+                    statusText: xhr.statusText,
+                    textStatus: textStatus,
+                    error: errorThrown,
+                    response: response
+                });
+            }
+
+            function formatJson(value) {
+                if (typeof value === 'string') {
+                    try {
+                        return JSON.stringify(JSON.parse(value), null, 2);
+                    } catch (err) {
+                        return value;
+                    }
+                }
+                return JSON.stringify(value, null, 2);
+            }
+
+            function setStatus(ok, statusText, timeText) {
+                $('#statusPill')
+                    .removeClass('ok err')
+                    .addClass(ok === true ? 'ok' : ok === false ? 'err' : '')
+                    .text(statusText || '未请求');
+                $('#timePill').text('耗时 ' + (timeText || '-'));
+            }
+
+            function setOutput(text) {
+                $('#responseOutput').text(text);
+            }
+
+            function copyCurl() {
+                var request;
+                try {
+                    request = buildRequest();
+                } catch (err) {
+                    setOutput('请求体不是合法 JSON，无法生成 curl：\n' + err.message);
+                    return;
+                }
+
+                var parts = ['curl -X ' + request.api.method, quoteShell(request.url)];
+                var headers = buildHeaders();
+                if (request.body) {
+                    headers['Content-Type'] = 'application/json';
+                }
+                $.each(headers, function (key, value) {
+                    parts.push('-H ' + quoteShell(key + ': ' + value));
+                });
+                if (request.body) {
+                    parts.push('-d ' + quoteShell(JSON.stringify(request.body)));
+                }
+                var curl = parts.join(' \\\n  ');
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(curl).then(function () {
+                        setOutput('已复制 curl：\n\n' + curl);
+                    }, function () {
+                        fallbackCopy(curl);
+                    });
+                } else {
+                    fallbackCopy(curl);
+                }
+            }
+
+            function fallbackCopy(text) {
+                var $tmp = $('<textarea>').val(text).appendTo('body').select();
+                document.execCommand('copy');
+                $tmp.remove();
+                setOutput('已复制 curl：\n\n' + text);
+            }
+
+            function quoteShell(value) {
+                return "'" + String(value).replace(/'/g, "'\\''") + "'";
+            }
+        });
+    </script>
+</body>
+
+</html>

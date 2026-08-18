@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+server/node_modules/
+web-antd/node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# Generated artifacts
+server/public/openApi.json
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+*.local
+server/.env.*
+!server/.env.example
+
+# Uploads & runtime artifacts
+upload/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# web folder (not needed)
+web/
+
+# Claude / AI assistant files
+.claude/
+CLAUDE.md
+docs/superpowers/

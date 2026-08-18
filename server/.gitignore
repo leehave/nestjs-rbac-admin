@@ -1,0 +1,30 @@
+node_modules
+/dist
+/coverage
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# runtime
+*.pid
+*.seed
+*.pid.lock
+
+# environment
+.env.*
+!.env.example
+
+# editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

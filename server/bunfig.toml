@@ -1,0 +1,21 @@
+[bundle]
+# Nest/TypeORM 动态 require 的可选依赖；原生模块运行时从 node_modules 加载
+external = [
+  "@nestjs/microservices",
+  "@nestjs/microservices/microservices-module",
+  "@nestjs/platform-socket.io",
+  "typeorm",
+  "mysql2",
+  "bcryptjs",
+  "express",
+  "ws",
+  "useragent",
+  "request",
+  "yamlparser",
+]
+
+[bundle.alias]
+"class-transformer/cjs/storage" = "./scripts/bun-shims/class-transformer-storage.ts"
+"class-transformer/storage" = "./scripts/bun-shims/class-transformer-storage.ts"
+"class-transformer/cjs/storage.js" = "./scripts/bun-shims/class-transformer-storage.ts"
+"expo-sqlite" = "./scripts/bun-shims/expo-sqlite-stub.ts"

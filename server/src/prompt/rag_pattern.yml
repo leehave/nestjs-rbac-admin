@@ -1,0 +1,133 @@
+native_rag:
+    generate:
+        请基于以下上下文内容回答问题：
+        {context}
+        
+        问题：{question}
+        
+        回答问题时，请参考以往回答的历史记忆。
+        历史记忆：{memorys}
+multi_query:
+    queries:
+        你是一个智能助手AI，你的任务是用给定的问题生成3个不同版本的问题，使生成的3个问题的检索相似度与给定的问题一致。
+        给定的问题： {question}
+        
+        输出格式：最终答案以字符串形式输出，生成的3个问题用换行符 \n\n 隔开。  
+    generate:
+        请基于以下上下文内容回答问题：
+        {context}
+        问题：{question}
+        
+        回答问题时，请参考以往回答的历史记忆。
+        历史记忆：{memorys}
+rag_fusion:
+    queries:
+        你是一个智能助手AI，你的任务是用给定的问题生成3个不同版本的问题，使生成的3个问题的检索相似度与给定的问题一致。生成的3个问题用换行符隔开。
+        给定的问题： {question}
+    generate:
+        请基于以下上下文内容回答问题：
+        {context}
+        问题：{question}
+        
+        回答问题时，请参考以往回答的历史记忆。
+        历史记忆：{memorys}
+sub_question:
+    questions:
+        你是一个智能助手AI，你的任务是用给定的问题生成3个子问题，使生成的3个子问题可以独立的回答。生成的3个问题用\n\n隔开。
+        给定的问题： {question}
+    answer:
+        请根据提供的上下文回答问题。
+        上下文： {context}
+        问题： {question}
+    generate:
+        提供了下上下文问题 + 答案集合：
+        {context}
+        用下上下文问题 + 答案集合综合分析问题的答案。
+        问题：{question}
+        
+        回答问题时，请参考以往回答的历史记忆。
+        历史记忆：{memorys}
+step_back:
+    change:
+        你是世界知识专家。
+        您的任务是退后一步，将问题改写为更通用的退后式提问，使问题更容易回答。
+        这里有几个例子：
+    generate:
+        您是世界知识的专家。我将向您提问。
+        您的回答应全面，且不得与相关上下文内容相矛盾。
+        否则，如果它们不相关，则忽略它们。
+        原始问题的上下文：{normal_context}
+        降级问题的上下文：{step_back_context}
+        问题：{question}
+        
+        回答问题时，请参考以往回答的历史记忆。
+        历史记忆：{memorys}
+hyde_rag:
+    question:
+        你是一个智能AI助手，请用给定的问题生成一个简短的解释性回答。
+        给定的问题： {question}
+        
+        请以字符串的格式输出答案。
+    generate:
+        根据提供的上下文问题回答问题：
+        上下文：{context}
+        问题：{question}
+        
+        回答问题时，请参考以往回答的历史记忆。
+        历史记忆：{memorys}
+routing_logic:
+    datasource:
+        您擅长将用户问题转接到合适的数据源。
+        根据问题涉及的编程语言，将其路由到相关数据源。
+        数据源列表： {datasource_descs}
+        用户问题：{query}
+    generate:
+        请基于以下上下文内容回答问题：
+        {context}
+        
+        问题：{question}
+        
+        回答问题时，请参考以往回答的历史记忆。
+        历史记忆：{memorys}
+routing_semantic:
+    generate:
+        请基于以下上下文内容回答问题：
+        {context}
+        
+        问题：{question}
+        
+        回答问题时，请参考以往回答的历史记忆。
+        历史记忆：{memorys}
+query_construction:
+    transform:
+        你是一个问题分析转换大师，分析用户输入的问题，并分析转化。
+        用户问题：{question}
+        
+        输出符合上述格式的 JSON
+        {output_format}
+    generate:
+        请基于以下上下文内容回答问题：
+        {context}
+        
+        问题：{question}
+multi_representation:
+    summary:
+        总结输入的文档：{document}
+        请以字符串格式输出。
+    generate:
+        请基于以下上下文内容回答问题：
+        {context}
+        
+        问题：{question}
+        
+        回答问题时，请参考以往回答的历史记忆。
+        历史记忆：{memorys}
+raptor_rag:
+    generate:
+        请基于以下上下文内容回答问题：
+        {context}
+        
+        问题：{question}
+        
+        回答问题时，请参考以往回答的历史记忆。
+        历史记忆：{memorys}
