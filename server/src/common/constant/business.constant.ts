@@ -1,7 +1,7 @@
 /** Token 过期常量 */
-export const LOGIN_TOKEN_EXPIRESIN = 1000 * 60 * 60 * 24; // 24 小时
-export const REFRESH_TOKEN_EXPIRESIN = 1000 * 60 * 60 * 24 * 7; // 7 天
-export const ACCESS_TOKEN_EXPIRESIN = 3600; // 1 小时（秒）
+export const LOGIN_TOKEN_EXPIRESIN = 1000 * 60 * 60 * 24 * 30; // 30 天（毫秒）
+export const REFRESH_TOKEN_EXPIRESIN = 1000 * 60 * 60 * 24 * 30; // 30 天（毫秒）
+export const ACCESS_TOKEN_EXPIRESIN = 60 * 60 * 24 * 30; // 30 天（秒）
 export const REFRESH_TOKEN_KEY = 'refresh_tokens:';
 
 /** 业务操作类型 */

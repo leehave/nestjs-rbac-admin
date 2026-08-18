@@ -41,7 +41,7 @@ export default () => ({
   },
   jwt: {
     secret: process.env.JWT_SECRET ?? '',
-    expiresIn: process.env.JWT_EXPIRES_IN ?? '2h',
+    expiresIn: process.env.JWT_EXPIRES_IN ?? '30d',
   },
   redis: {
     host: process.env.REDIS_HOST ?? '127.0.0.1',
