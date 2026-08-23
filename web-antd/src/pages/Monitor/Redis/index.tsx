@@ -3,7 +3,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { useT } from '@/locales';
 import { useRequest } from 'ahooks';
-import { queryRedisInfo } from '@/services/monitor';
+import { getRedisInfo } from '@/services/monitor';
 
 const formatBytes = (bytes: number) => {
   if (!bytes) return '0 B';
@@ -24,7 +24,7 @@ export const Component = () => {
     loading,
     refresh,
   } = useRequest(async () => {
-    const res = await queryRedisInfo();
+    const res = await getRedisInfo();
     const data = res.data || res || {};
     return {
       error: data.error,

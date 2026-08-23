@@ -65,7 +65,7 @@ export const queryAttachmentCategoryList = (params?: { tree?: boolean }) => {
 };
 
 // 创建附件分类
-export const createAttachmentCategory = (data: Record<string, any>) => {
+export const addAttachmentCategory = (data: Record<string, any>) => {
   return request('/api/system/attachment-category/create', {
     method: 'POST',
     data,

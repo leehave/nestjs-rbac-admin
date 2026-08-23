@@ -25,13 +25,13 @@ import { Sender } from '@ant-design/x';
 import { createAiWs, type AiWsClient } from '@/utils/ai-ws';
 import cache from '@/utils/cache';
 import {
-  listSessions,
-  createSession,
-  listMessages,
+  querySessionList,
+  addSession,
+  queryMessageList,
   updateSessionTitle,
   updateSessionModel,
   deleteSession,
-  modelOptions,
+  queryModelOptions,
 } from '@/services/ai';
 
 interface ChatMessage {
@@ -75,19 +75,19 @@ export const Component: React.FC<unknown> = () => {
   };
 
   const loadSessions = async (page: number) => {
-    const res = await listSessions({ page, limit: 20 });
+    const res = await querySessionList({ page, limit: 20 });
     setSessions(res.list || []);
     setSessionTotal(res.total || 0);
     setSessionPage(page);
   };
 
   const loadModels = async () => {
-    const res = await modelOptions();
+    const res = await queryModelOptions();
     setModels(res.list || []);
   };
 
   const loadMessages = async (uuid: string) => {
-    const res = await listMessages(uuid);
+    const res = await queryMessageList(uuid);
     setMessages(
       (res.list || []).map((m) => ({
         key: m.message_uuid,
@@ -197,7 +197,7 @@ export const Component: React.FC<unknown> = () => {
   };
 
   const handleNewSession = async () => {
-    const res = await createSession({});
+    const res = await addSession({});
     const uuid = res.data?.session_uuid;
     if (!uuid) return;
     await loadSessions(1);
@@ -212,7 +212,7 @@ export const Component: React.FC<unknown> = () => {
     if (!content || streaming) return;
     let uuid = activeUuid;
     if (!uuid) {
-      const res = await createSession({});
+      const res = await addSession({});
       uuid = res.data?.session_uuid ?? null;
       if (!uuid) return;
       await loadSessions(1);

@@ -105,14 +105,14 @@ export const cleanJobLog = () => {
 };
 
 // 查询服务状态
-export const queryServerInfo = () => {
+export const getServerInfo = () => {
   return request('/api/core/server/monitor', {
     method: 'GET',
   });
 };
 
 // 查询缓存信息
-export const queryCacheInfo = () => {
+export const getCacheInfo = () => {
   return request('/api/core/server/redis', {
     method: 'GET',
   });
@@ -135,7 +135,7 @@ export const queryCacheKeyList = (cacheName) => {
 };
 
 // 查询缓存键值
-export const queryCacheValue = (cacheName, cacheKey) => {
+export const getCacheValue = (cacheName, cacheKey) => {
   return request('/api/core/server/redis/browser/key-info', {
     method: 'GET',
     params: { key: cacheKey },
@@ -190,7 +190,7 @@ export const deleteEmailLog = (ids: number[]) => {
 };
 
 // 查询 Redis 监控信息
-export const queryRedisInfo = () => {
+export const getRedisInfo = () => {
   return request('/api/core/server/redis', {
     method: 'GET',
   });
@@ -205,7 +205,7 @@ export const queryDatabaseTableList = (params?: any) => {
 };
 
 // 查询数据源信息
-export const queryDatabaseDataSource = () => {
+export const getDatabaseDataSource = () => {
   return request('/api/core/database/table/dataSource', {
     method: 'GET',
   });

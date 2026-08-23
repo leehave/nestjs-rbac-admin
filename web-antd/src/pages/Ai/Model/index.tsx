@@ -13,13 +13,13 @@ import {
 } from '@ant-design/pro-components';
 import { EditFormModal } from '@/components';
 import {
-  listProviders,
-  createProvider,
+  queryProviderPage,
+  addProvider,
   updateProvider,
   deleteProvider,
-  providerOptions,
-  listModels,
-  createModel,
+  queryProviderOptions,
+  queryModelPage,
+  addModel,
   updateModel,
   deleteModel,
 } from '@/services/ai';
@@ -109,7 +109,7 @@ const ProviderForm: React.FC<ProviderFormProps> = ({ record, trigger, onFinish }
           if (record) {
             await updateProvider(record.id, values);
           } else {
-            await createProvider(values);
+            await addProvider(values);
           }
           message.success('保存成功');
           onFinish();
@@ -204,7 +204,7 @@ const ModelForm: React.FC<ModelFormProps> = ({ record, providers, trigger, onFin
           if (record) {
             await updateModel(record.id, values);
           } else {
-            await createModel(values);
+            await addModel(values);
           }
           message.success('保存成功');
           onFinish();
@@ -289,7 +289,7 @@ const ProviderPanel: React.FC = () => {
       ]}
       request={async (params: any) => {
         const { current = 1, pageSize = 10, name } = params;
-        const res = await listProviders({ page: current, limit: pageSize, name });
+        const res = await queryProviderPage({ page: current, limit: pageSize, name });
         return { data: res.list || [], total: res.total, success: res.code === 200 };
       }}
       columns={columns}
@@ -306,7 +306,7 @@ const ModelPanel: React.FC = () => {
   const [providers, setProviders] = useState<Ai.ProviderOption[]>([]);
 
   useEffect(() => {
-    providerOptions().then((res) => setProviders(res.list || []));
+    queryProviderOptions().then((res) => setProviders(res.list || []));
   }, []);
 
   const columns: ProColumns<Ai.ModelItem>[] = [
@@ -388,7 +388,7 @@ const ModelPanel: React.FC = () => {
       ]}
       request={async (params: any) => {
         const { current = 1, pageSize = 10, name } = params;
-        const res = await listModels({ page: current, limit: pageSize, name });
+        const res = await queryModelPage({ page: current, limit: pageSize, name });
         return { data: res.list || [], total: res.total, success: res.code === 200 };
       }}
       columns={columns}

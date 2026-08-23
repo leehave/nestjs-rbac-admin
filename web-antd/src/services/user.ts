@@ -43,39 +43,39 @@ export const updateUser = (data: any) => {
 };
 
 // 用户详情
-export function getUser(userId: number) {
+export const getUser = (userId: number) => {
   return request<any>('/api/system/user/detail/' + userId, {
     method: 'GET',
   });
-}
+};
 
-// 删除用户
-export function deleteUser(userIds) {
+// 删除用户（userIds 为逗号分隔的 id 串）
+export const deleteUser = (userIds: string) => {
   return request<any>('/api/system/user/delete/' + userIds, {
     method: 'DELETE',
   });
-}
+};
 
 // 重置用户密码
-export function resetUserPwd(data: any) {
+export const resetUserPwd = (data: any) => {
   return request<any>('/api/system/user/reset-password/' + data.id, {
     method: 'PUT',
     data,
   });
-}
+};
 
 // 获取未授权用户列表
-export function getUnAllocatedUserList(params: any) {
+export const getUnAllocatedUserList = (params: any) => {
   return request<any>('/api/system/role/authUser/unallocatedList', {
     method: 'GET',
     params,
   });
-}
+};
 
 // 获取已授权用户列表
-export function getAllocatedUserList(params: any) {
+export const getAllocatedUserList = (params: any) => {
   return request<any>('/api/system/role/authUser/allocatedList', {
     method: 'GET',
     params,
   });
-}
+};

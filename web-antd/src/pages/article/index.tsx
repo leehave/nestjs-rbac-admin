@@ -14,7 +14,7 @@ import {
   ProFormTextArea,
 } from '@ant-design/pro-components';
 import { queryArticlePage, deleteArticle } from '@/services/article';
-import { queryAllArticleCategory } from '@/services/articleCategory';
+import { queryArticleCategoryOptions } from '@/services/articleCategory';
 import { PermissionGuard } from '@/components/Layout';
 import { WangEdtior } from '@/components';
 import CreateArticleForm from './components/CreateArticleForm';
@@ -46,7 +46,7 @@ export const Component: React.FC<unknown> = () => {
   const [categoryValueEnum, setCategoryValueEnum] = useState<Record<number, { text: string }>>({});
 
   useEffect(() => {
-    queryAllArticleCategory()
+    queryArticleCategoryOptions()
       .then((res: any) => {
         const list = res?.data ?? [];
         setCategoryOptions(list.map((c: any) => ({ label: c.name, value: c.id })));

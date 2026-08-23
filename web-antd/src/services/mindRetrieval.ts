@@ -1,28 +1,9 @@
 import cache from '@/utils/cache';
 
-// 检索请求参数（对齐后端 MindInvokeBaseDto）
-export interface MindRetrievalParams {
-  query: string;
-  library?: string;
-  source_id?: string;
-  source?: string;
-  pattern?: string;
-  [key: string]: any;
-}
+const FRAME_PREFIXES: `${Mind.StreamFrameType}:`[] = ['event:', 'think:', 'data:'];
 
-// SSE 流式回调
-export interface MindRetrievalHandlers {
-  onEvent?: (payload: string) => void;
-  onThink?: (payload: string) => void;
-  onData?: (payload: string) => void;
-  signal?: AbortSignal;
-}
-
-type FrameType = 'event' | 'think' | 'data';
-
-const FRAME_PREFIXES: `${FrameType}:`[] = ['event:', 'think:', 'data:'];
-
-const getToken = (): string => {
+// 检索走原生 fetch 读流，拿不到 _request 拦截器注入的 token，这里自取
+const readAuthToken = (): string => {
   try {
     const tokenData = cache.local.getJSON('token');
     return tokenData?.state?.token || '';
@@ -31,36 +12,39 @@ const getToken = (): string => {
   }
 };
 
-// 解析一个 SSE 帧（以空行分隔），返回 { type, content }
-// 后端帧格式：同一 type 的 payload 多行时按行写成 `type: line`，帧间以 \n\n 分隔
-const parseFrame = (frame: string): { type: FrameType; content: string } | null => {
+/**
+ * 解析单个 SSE 帧。
+ * 后端同一帧的多行 payload 会逐行写成 `type: line`，帧之间以空行分隔。
+ */
+const parseFrame = (
+  frame: string,
+): { type: Mind.StreamFrameType; content: string } | null => {
   const lines = frame.split('\n');
-  let type: FrameType | null = null;
+  let type: Mind.StreamFrameType | null = null;
   const contents: string[] = [];
+
   for (const raw of lines) {
     const line = raw.replace(/\r$/, '');
     for (const prefix of FRAME_PREFIXES) {
       if (line.startsWith(prefix)) {
-        if (type === null) type = prefix.slice(0, -1) as FrameType;
+        if (type === null) type = prefix.slice(0, -1) as Mind.StreamFrameType;
         contents.push(line.slice(prefix.length));
         break;
       }
     }
   }
+
   if (!type || contents.length === 0) return null;
   return { type, content: contents.join('\n') };
 };
 
-/**
- * 发起 SSE 流式检索请求（POST）。
- * 后端返回 text/event-stream，逐帧解析并回调。
- */
-export const streamMindRetrieval = async (
+/** 发起 SSE 检索请求并逐帧消费，直到流结束或被 signal 中断 */
+export const openRetrievalStream = async (
   url: string,
-  params: MindRetrievalParams,
-  handlers: MindRetrievalHandlers,
+  params: Mind.RetrievalParams,
+  handlers: Mind.RetrievalHandlers,
 ): Promise<void> => {
-  const token = getToken();
+  const token = readAuthToken();
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -88,18 +72,19 @@ export const streamMindRetrieval = async (
   };
 
   try {
-    while (true) {
+    for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-      let idx = buffer.indexOf('\n\n');
-      while (idx !== -1) {
-        const frame = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 2);
-        dispatch(frame);
-        idx = buffer.indexOf('\n\n');
+
+      let boundary = buffer.indexOf('\n\n');
+      while (boundary !== -1) {
+        dispatch(buffer.slice(0, boundary));
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf('\n\n');
       }
     }
+    // 末尾可能残留一个没有空行收尾的帧
     if (buffer.trim()) dispatch(buffer);
   } finally {
     reader.releaseLock();
@@ -108,12 +93,12 @@ export const streamMindRetrieval = async (
 
 // 文档检索（NativeRAG）
 export const retrieveRag = (
-  params: MindRetrievalParams,
-  handlers: MindRetrievalHandlers,
-) => streamMindRetrieval('/api/mind/retrieval/rag', params, handlers);
+  params: Mind.RetrievalParams,
+  handlers: Mind.RetrievalHandlers,
+) => openRetrievalStream('/api/mind/retrieval/rag', params, handlers);
 
-// 智能检索（Advanced RAG）
+// 智能检索（Corrective RAG）
 export const retrieveAdvance = (
-  params: MindRetrievalParams,
-  handlers: MindRetrievalHandlers,
-) => streamMindRetrieval('/api/mind/retrieval/advance', params, handlers);
+  params: Mind.RetrievalParams,
+  handlers: Mind.RetrievalHandlers,
+) => openRetrievalStream('/api/mind/retrieval/advance', params, handlers);

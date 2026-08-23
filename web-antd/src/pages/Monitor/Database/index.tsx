@@ -20,7 +20,7 @@ import {
 } from '@ant-design/pro-components';
 import {
   queryDatabaseTableList,
-  queryDatabaseDataSource,
+  getDatabaseDataSource,
   queryDatabaseDetailed,
   queryDatabaseCreateSql,
   optimizeDatabaseTable,
@@ -61,7 +61,7 @@ export const Component: React.FC<unknown> = () => {
 
   const loadDataSource = async () => {
     try {
-      const res = await queryDatabaseDataSource();
+      const res = await getDatabaseDataSource();
       setDataSource(res.data || res || []);
     } catch {
       setDataSource([]);

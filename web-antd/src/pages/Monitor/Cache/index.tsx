@@ -4,7 +4,7 @@ import { PageContainer, ProCard } from '@ant-design/pro-components';
 import KeyspacePie from './components/KeyspacePie';
 import { rawT, useT, T } from '@/locales';
 import { useRequest, useResponsive } from 'ahooks';
-import { queryCacheInfo } from '@/services/monitor';
+import { getCacheInfo } from '@/services/monitor';
 
 export const Component = () => {
   const t = useT();
@@ -14,7 +14,7 @@ export const Component = () => {
     loading,
     refresh,
   } = useRequest(async () => {
-    const res = await queryCacheInfo();
+    const res = await getCacheInfo();
     const data = res.data || {};
     const variable = data.variable || {};
     return {

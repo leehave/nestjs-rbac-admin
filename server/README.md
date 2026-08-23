@@ -1,6 +1,6 @@
 # NestJS RBAC Admin · 后端服务
 
-> 一款基于 **NestJS + TypeScript 6.x + TypeORM 1.0.x** 技术栈的全功能企业级后端管理系统，可运行在 Node.js 与 Bun 双运行时环境中，集成 RBAC 权限、多租户、AI 对话、知识库 RAG、定时任务、系统监控、API 文档等开箱即用的企业级能力。
+基于 NestJS 11 与 TypeORM 的后端服务，Node.js 和 Bun 都能跑。提供 RBAC 权限与多租户隔离、系统监控、定时任务、AI 对话，以及基于向量库和知识图谱的 RAG 知识库。
 
 [![Node](https://img.shields.io/badge/Node-%3E%3D20.0.0-brightgreen)](https://nodejs.org)
 [![BUN](https://img.shields.io/badge/BUN-%3E%3D1.3.X-brightgreen)](https://bun.sh/)
@@ -13,7 +13,7 @@
 
 ---
 
-## 📋 目录
+## 目录
 
 - [技术栈](#技术栈)
 - [核心功能](#核心功能)
@@ -62,7 +62,7 @@
 
 ## 核心功能
 
-### 🔐 系统管理（RBAC + 多租户）
+### 系统管理（RBAC + 多租户）
 - **用户管理**：用户 CRUD、状态管理、密码重置
 - **角色管理**：RBAC 角色权限控制
 - **菜单管理**：动态菜单树、按钮级权限
@@ -73,14 +73,14 @@
 - **租户管理**：多租户隔离
 - **插件管理**：插件注册与管理
 
-### 🧠 AI 智能（AI 对话 + RAG）
+### AI 对话与知识库
 - **AI 对话**：多供应商 LLM 对话，支持流式输出
   - 多 LLM 供应商（OpenAI / Ollama / 自定义）
   - WebSocket 实时流式对话
   - 对话 Session 管理
   - Agent 管理
   - 上下文构建 + 会话摘要
-- **RAG知识库**：完整的 RAG 系统
+- **RAG 知识库**
   - 文档管理（上传、解析、索引）
   - 向量检索（Qdrant）
   - 知识图谱（Neo4j）
@@ -95,7 +95,7 @@
     - 搜索记忆服务
     - Prompt 管理
 
-### 📊 系统监控
+### 系统监控
 - **服务器监控**：CPU、内存、磁盘、网络等系统指标
 - **缓存监控**：Redis 缓存管理（查看、清理）
 - **数据库监控**：数据库连接池、表空间
@@ -106,13 +106,13 @@
 - **内存监控**：RSS / 堆使用率监控告警
 - **邮件日志**：邮件发送记录
 
-### 📦 其他模块
+### 其他模块
 - **文件上传**：本地 / COS（云存储暂无），附件分类管理
 - **内容管理**：文章 CRUD
 - **数据备份**：自动备份任务
 - **通用工具**：验证码（SVG）、Excel 导入导出、敏感词过滤、XSS 防护
 
-### 🛡️ 安全防护
+### 安全防护
 - JWT 身份认证（passport-jwt）
 - 角色 + 权限双校验守卫
 - 请求频率限制（rate-limit）
@@ -198,7 +198,7 @@ server/
 │   │   │   ├── entities/          # 实体（Provider、Model、Agent、Session、Message）
 │   │   │   ├── providers/         # LLM 供应商工具 + OpenAI 流式处理
 │   │   │   └── services/          # 对话、配置、上下文、摘要、流停止、信号量
-│   │   ├── Mind/                 # RAG 知识库 / Agent 系统
+│   │   ├── mind/                  # RAG 知识库 / Agent 系统
 │   │   │   ├── common/            # 公共信息、验证码
 │   │   │   ├── home/              # 首页（天气、统计）
 │   │   │   ├── user/              # 用户管理
@@ -356,14 +356,15 @@ server/
 |------|--------|------|
 | `NODE_ENV` | `development` | 运行环境 |
 | `DEBUG` | `true` | `false` 时进入只读模式 |
-| `APP_NAME` | `nextjs-server` | 应用名称 |
-| `APP_PORT` | `3000` | HTTP 端口 |
+| `APP_NAME` | `NestAdmin-Api` | 应用名称 |
+| `APP_PORT` | `48137` | HTTP 端口 |
 | `DB_HOST` / `DB_PORT` | `127.0.0.1` / `3306` | MySQL 连接 |
 | `DB_USERNAME` / `DB_PASSWORD` | `root` / ` ` | MySQL 账号密码 |
-| `DB_NAME` | `nestjs` | 数据库名 |
-| `JWT_SECRET` | （必填） | JWT 签名密钥 |
-| `JWT_EXPIRES_IN` | `2h` | JWT 过期时间 |
+| `DB_NAME` | `rbac_admin` | 数据库名 |
+| `JWT_SECRET` | （必填，≥32 位） | JWT 签名密钥 |
+| `JWT_EXPIRES_IN` | `30d` | JWT 过期时间 |
 | `REDIS_HOST` / `REDIS_PORT` | `127.0.0.1` / `6379` | Redis 连接 |
+| `REDIS_DB` | `3` | Redis 库序号 |
 | `SWAGGER_ENABLED` | `false` | Swagger 文档开关 |
 | `CORS_MODE` | `off` | CORS 模式（off / all / list） |
 | `FILE_STORAGE` | `local` | 文件存储方式（local / cos） |
@@ -372,7 +373,7 @@ server/
 
 完整配置请参考 `.env.example` 和 `src/config/configuration.ts`。
 
-> ⚠️ **安全提醒**：`.env.development` 和 `.env.production` 包含真实连接信息，**不要提交 Git**。`.env.example` 只放随机示例值。
+> **安全提醒**：`.env.development` 和 `.env.production` 含真实连接信息，不要提交 Git。`.env.example` 只放示例值。
 
 ---
 
@@ -438,26 +439,23 @@ CREATE DATABASE IF NOT EXISTS `nestjs` DEFAULT CHARACTER SET utf8mb4 COLLATE utf
 ### 4. 初始化数据
 
 ```bash
-# 方式一：运行 SQL 脚本（如果 sql/ 目录下有初始化脚本）
-mysql -u root -p nestjs < sql/init.sql
+# 方式一：运行仓库根目录的 SQL 脚本
+mysql -u root -p rbac_admin < ../database/init.sql
+mysql -u root -p rbac_admin < ../database/data-permission.sql
+mysql -u root -p rbac_admin < ../database/web-antd-menu-seed.sql
+mysql -u root -p rbac_admin < ../database/web-antd-mind-menu.sql
 
-# 方式二：运行 TypeORM 迁移（推荐）
+# 方式二：运行 TypeORM 迁移
 pnpm run migration:run
 
 # 方式三：同步 Entity（仅开发环境临时使用，需设置 DB_SYNC=true）
 ```
 
-### 5. 初始化管理员账号
+### 5. 管理员账号
 
-```bash
-# 构建项目
-pnpm run build
+`database/init.sql` 已写入默认管理员：`admin` / `admin123`，部署到公网前先改掉。
 
-# 初始化认证数据（创建默认 admin 账号）
-pnpm run init:auth
-```
-
-默认管理员：`admin`，密码：`123456`
+> `package.json` 里的 `init:auth` / `init:auth:dev` 指向 `dist/auth/cli/init-auth.cli.js`，但 `src` 下没有对应源文件，脚本跑不起来；`.env.example` 里的 `ADMIN_PASSWORD` 同样没有代码读取。清理掉或补上实现之前，请走上面的 SQL 方式。
 
 ### 6. 启动开发服务器
 
@@ -475,7 +473,9 @@ pnpm run dev:nest
 pnpm run dev:prd
 ```
 
-服务默认启动于 `http://localhost:8181`。
+服务启动在 `APP_PORT` 指定的端口，默认 `http://localhost:48137`。
+
+> 前端 `web-antd/vite.config.ts` 的 dev proxy 写死指向 `http://127.0.0.1:3000`。两边要对齐，否则本地联调连不通。
 
 ---
 
@@ -505,7 +505,7 @@ pnpm run start:debug:nest
 SWAGGER_ENABLED=true
 
 # 重启后访问
-# http://localhost:8181/api/swagger-ui/
+# http://localhost:48137/api/swagger-ui/
 ```
 
 ### API 自动验证
@@ -524,7 +524,7 @@ pnpm run verify:api:dev -- --output=logs/verify/report.md
 ### 日志查询
 
 ```http
-GET http://localhost:8181/api/log/query?level=info&category=system.startup
+GET http://localhost:48137/api/log/query?level=info&category=system.startup
 ```
 
 ---
@@ -562,17 +562,17 @@ pnpm run prod
 
 ### 生产环境检查清单
 
-- [v] **JWT_SECRET**：替换为强随机字符串（≥32位）
-- [v] **ADMIN_PASSWORD**：修改默认管理员密码
-- [v] **DB_SYNC=false**：禁止自动同步表结构
-- [v] **DB_LOGGING=false**：关闭 SQL 日志
-- [v] **DEBUG=false**：生产环境开启只读模式
-- [v] **Redis 密码**：设置 `REDIS_PASSWORD`
-- [v] **CORS 配置**：设置 `CORS_MODE=list` + `CORS_ORIGINS`
-- [v] **文件存储**：配置 `FILE_DOMAIN` 为可访问域名
-- [v] **日志保留**：按需调整 `LOG_RETENTION_DAYS`
-- [v] **内存限制**：检查 `MEMORY_RSS_WARN_MB` / `MEMORY_RSS_FATAL_MB`
-- [ ] **备份策略**：配置数据备份计划
+- `JWT_SECRET` 替换为强随机字符串（≥32 位）
+- 改掉 `init.sql` 里的默认管理员密码 `admin123`
+- `DB_SYNC=false`，禁止自动同步表结构
+- `DB_LOGGING=false`，关闭 SQL 日志
+- `DEBUG=false`，开启只读模式
+- 设置 `REDIS_PASSWORD`
+- `CORS_MODE=list` 配合 `CORS_ORIGINS`
+- `FILE_DOMAIN` 配置为可访问域名
+- 按需调整 `LOG_RETENTION_DAYS`
+- 检查 `MEMORY_RSS_WARN_MB` / `MEMORY_RSS_FATAL_MB`
+- 配置数据备份计划
 
 ---
 
@@ -651,7 +651,7 @@ SWAGGER_USERNAME=swagger     # 可选 Basic Auth
 SWAGGER_PASSWORD=swagger123
 ```
 
-访问地址：`http://localhost:8181/api/swagger-ui/`
+访问地址：`http://localhost:48137/api/swagger-ui/`
 
 Swagger 文档支持 Basic Auth 保护，需配置 `SWAGGER_USERNAME` / `SWAGGER_PASSWORD`。
 
@@ -662,7 +662,7 @@ OpenAPI JSON 规范自动导出到 `public/openApi.json`，可用于 API 验证C
 AI 对话使用 WebSocket 协议，与 HTTP 共用端口（无需单独启动）：
 
 ```text
-ws://localhost:8181/ws/ai
+ws://localhost:48137/ws/ai
 ```
 
 WebSocket 通过 `@nestjs/platform-ws`（WsAdapter）挂载。
@@ -906,8 +906,7 @@ pnpm run typecheck         # TypeScript 类型检查
 2. `.env.development` 中的连接信息是否正确
 3. 查看启动日志中的依赖状态提示
 
-
-> ⚠️ 生产环境部署后应立即修改密码。
+也可以直接请求 `GET /api/health`，它会返回两者的连接状态。
 
 ### Q2: 如何启用 Swagger 文档？
 
@@ -919,10 +918,10 @@ SWAGGER_USERNAME=swagger
 SWAGGER_PASSWORD=swagger123
 ```
 
-访问 `http://localhost:8181/api/swagger-ui/`。
+访问 `http://localhost:48137/api/swagger-ui/`。
 
 
-### Q2: 如何集成知识库（RAG）？
+### Q3: 如何集成知识库（RAG）？
 
 1. 启动 Qdrant 向量数据库
 2. 配置 `MIND_QDRANT_URL`
@@ -930,7 +929,7 @@ SWAGGER_PASSWORD=swagger123
 4. 在知识库模块中上传文档
 5. 系统自动完成解析 → 分块 → 向量化 → 索引
 
-### Q3: Bun 兼容性？
+### Q4: Bun 兼容性？
 
 项目支持 Bun 运行时，但注意：
 
@@ -939,7 +938,7 @@ SWAGGER_PASSWORD=swagger123
 - Bun 单文件编译 `build:bun` 和 `bundle:bun` 为实验性功能
 - PM2 生产部署可通过 `--interpreter bun` 使用 Bun
 
-### Q4: 如何备份数据？
+### Q5: 如何备份数据？
 
 - **数据库**：使用 `mysqldump` 定时备份
 - **文件**：备份 `FILE_UPLOAD_DIR` 目录
@@ -950,4 +949,4 @@ SWAGGER_PASSWORD=swagger123
 
 ## 许可证
 
-本项目使用了MIT许可证,欢迎start & fork。
+MIT，欢迎 star & fork。

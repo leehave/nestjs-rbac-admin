@@ -16,7 +16,7 @@ export const queryPluginPage = (
 };
 
 // 创建插件
-export const createPlugin = (data) => {
+export const addPlugin = (data) => {
   return request('/api/system/plugin/create', {
     method: 'POST',
     data,

@@ -30,7 +30,7 @@ import {
   moveAttachment,
   getAttachmentStats,
   queryAttachmentCategoryList,
-  createAttachmentCategory,
+  addAttachmentCategory,
   updateAttachmentCategory,
   deleteAttachmentCategory,
 } from '@/services/attachment';
@@ -179,7 +179,7 @@ export const Component: React.FC<unknown> = () => {
     if (catEditId) {
       await updateAttachmentCategory(catEditId, values);
     } else {
-      await createAttachmentCategory(values);
+      await addAttachmentCategory(values);
     }
     message.success('保存成功');
     setCatFormVisible(false);

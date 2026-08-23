@@ -33,7 +33,7 @@ import { rawT, useT, T } from '@/locales';
 import {
   queryCacheList,
   queryCacheKeyList,
-  queryCacheValue,
+  getCacheValue,
   deleteCacheName,
   deleteCacheKey,
   cleanCache,
@@ -158,7 +158,7 @@ const CacheKeyList: React.FC<CacheKeyListProps> = ({ cacheName }) => {
         width={378}
         readonly
         request={async () => {
-          const res = await queryCacheValue(cacheName, selectedRowKey);
+          const res = await getCacheValue(cacheName, selectedRowKey);
           const d = res.data || {};
           return {
             cacheName,

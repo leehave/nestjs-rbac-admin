@@ -1,5 +1,5 @@
 import { SelectLang, ToggleFullscreenBtn } from '@/components/Layout';
-import { queryCaptchaImage, queryTenantsByUsername } from '@/services/auth';
+import { getCaptchaImage, queryTenantsByUsername } from '@/services/auth';
 import {
   LockOutlined,
   SafetyOutlined,
@@ -81,7 +81,7 @@ const CaptchaImage: React.FC<{
   onRefresh?: () => void;
 }> = ({ onSuccess, onRefresh }) => {
   const { styles } = useStyles();
-  const { refresh, data, loading, error } = useRequest(queryCaptchaImage, {
+  const { refresh, data, loading, error } = useRequest(getCaptchaImage, {
     onSuccess(res) {
       const uuid = res?.uuid;
       if (uuid) onSuccess(uuid);

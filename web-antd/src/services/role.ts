@@ -25,7 +25,7 @@ export const queryRolePage = (
 };
 
 // 查询所有角色
-export const queryAllRole = () => {
+export const queryRoleOptions = () => {
   return request('/api/system/role/all', {
     method: 'GET',
   });
@@ -92,17 +92,17 @@ export const updateAuthUser = (params) => {
 };
 
 // 取消用户授权
-export function updateUnAuthUser(data: any) {
+export const updateUnAuthUser = (data: any) => {
   return request<any>('/api/system/role/authUser/cancel', {
     method: 'PUT',
     data,
   });
-}
+};
 
 // 批量取消用户授权
-export function updateUnAuthBatchUser(params: any) {
+export const updateUnAuthBatchUser = (params: any) => {
   return request<any>('/api/system/role/authUser/cancelAll', {
     method: 'PUT',
     params,
   });
-}
+};

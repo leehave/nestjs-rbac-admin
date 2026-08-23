@@ -23,7 +23,7 @@ import {
 } from '@ant-design/pro-components';
 import {
   queryPluginPage,
-  createPlugin,
+  addPlugin,
   installPlugin,
   uninstallPlugin,
   enablePlugin,
@@ -66,7 +66,7 @@ export const Component: React.FC<unknown> = () => {
 
   const handleCreate = async () => {
     const values = await createForm.validateFields();
-    await createPlugin({ ...values, version: values.version || '1.0.0' });
+    await addPlugin({ ...values, version: values.version || '1.0.0' });
     message.success('插件创建成功');
     setCreateVisible(false);
     createForm.resetFields();

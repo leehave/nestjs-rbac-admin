@@ -18,7 +18,7 @@ export const queryArticleCategoryPage = (
 };
 
 // 查询所有启用的分类（下拉选项）
-export const queryAllArticleCategory = () => {
+export const queryArticleCategoryOptions = () => {
   return request('/api/article/category/enabled', {
     method: 'GET',
   });

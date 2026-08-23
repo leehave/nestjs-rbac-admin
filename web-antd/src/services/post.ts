@@ -25,7 +25,7 @@ export const queryPostPage = (
 };
 
 // 查询所有岗位
-export const queryAllPost = () => {
+export const queryPostOptions = () => {
   return request('/api/system/post/enabled', {
     method: 'GET',
   });

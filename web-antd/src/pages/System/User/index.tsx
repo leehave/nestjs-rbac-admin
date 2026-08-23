@@ -38,8 +38,8 @@ import React, { useRef, useState } from 'react';
 import { useRequest, useResponsive } from 'ahooks';
 import { queryUserPage, deleteUser, resetUserPwd } from '@/services/user';
 import { queryDeptTree } from '@/services/dept';
-import { queryAllPost } from '@/services/post';
-import { queryAllRole } from '@/services/role';
+import { queryPostOptions } from '@/services/post';
+import { queryRoleOptions } from '@/services/role';
 import { queryDictsByType } from '@/services/dict';
 import { PermissionGuard } from '@/components/Layout';
 import { rawT, useT, T } from '@/locales';
@@ -113,7 +113,7 @@ export const Component: React.FC<unknown> = () => {
   });
   const { data: postOptions } = useRequest(async () => {
     try {
-      const res = await queryAllPost();
+      const res = await queryPostOptions();
       return (res.data || []).map((post) => ({ label: post.name, value: post.id }));
     } catch {
       return [];
@@ -121,7 +121,7 @@ export const Component: React.FC<unknown> = () => {
   });
   const { data: roleOptions } = useRequest(async () => {
     try {
-      const res = await queryAllRole();
+      const res = await queryRoleOptions();
       return (res.data || []).map((role) => ({ label: role.name, value: role.id }));
     } catch {
       return [];

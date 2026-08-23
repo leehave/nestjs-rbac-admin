@@ -7,7 +7,7 @@ import {
 } from '@ant-design/pro-components';
 import { rawT, useT, T } from '@/locales';
 import { useRequest, useResponsive } from 'ahooks';
-import { queryServerInfo } from '@/services/monitor';
+import { getServerInfo } from '@/services/monitor';
 
 const DiskList: React.FC<{ list: any }> = ({ list }) => {
   return (
@@ -49,7 +49,7 @@ export const Component = () => {
     loading,
     refresh,
   } = useRequest(async () => {
-    const res = await queryServerInfo();
+    const res = await getServerInfo();
     const data = res.data || {};
     return {
       memory: data.memory || {},

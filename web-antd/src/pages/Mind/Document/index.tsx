@@ -48,21 +48,27 @@ import { useT, T } from '@/locales';
 
 const { Text } = Typography;
 
-// 索引状态 -> 展示标签
-const INDEX_STATUS_MAP: Record<string, { color: string; label: string }> = {
+// 覆盖后端 DocumentIndexStage 的全部取值，中间态统一用 processing 色
+const INDEX_STAGE_META: Record<
+  Mind.IndexStage,
+  { color: string; label: string }
+> = {
+  pending: { color: 'warning', label: '等待中' },
+  queued: { color: 'default', label: '已入队' },
+  extract: { color: 'processing', label: '解析中' },
+  split: { color: 'processing', label: '分块中' },
+  vector: { color: 'processing', label: '向量化' },
+  graph: { color: 'processing', label: '构建图谱' },
   done: { color: 'success', label: '已完成' },
   failed: { color: 'error', label: '失败' },
-  pending: { color: 'warning', label: '等待中' },
-  processing: { color: 'processing', label: '处理中' },
-  queued: { color: 'default', label: '已入队' },
-  paused: { color: 'default', label: '已暂停' },
 };
 
-const renderIndexStatus = (record: any) => {
-  const status = record?.index_status || (record?.status === 1 ? 'done' : 'pending');
-  const meta = INDEX_STATUS_MAP[status] || { color: 'default', label: status || '-' };
-  const progress = Number(record?.index_progress ?? (record?.status === 1 ? 100 : 0));
-  const message = record?.index_message;
+const renderIndexStatus = (row: Mind.DocumentItem) => {
+  const stage = row.index_status || (row.status === 1 ? 'done' : 'pending');
+  const meta = INDEX_STAGE_META[stage] || { color: 'default', label: stage };
+  const progress = Number(row.index_progress ?? (row.status === 1 ? 100 : 0));
+  const message = row.index_message;
+
   return (
     <Space direction="vertical" size={2} style={{ width: '100%' }}>
       <Tag color={meta.color}>{meta.label}</Tag>
@@ -70,7 +76,11 @@ const renderIndexStatus = (record: any) => {
         <Progress percent={progress} size="small" style={{ width: 120 }} />
       )}
       {message ? (
-        <Text type="secondary" style={{ fontSize: 12 }} ellipsis={{ tooltip: message }}>
+        <Text
+          type="secondary"
+          style={{ fontSize: 12 }}
+          ellipsis={{ tooltip: message }}
+        >
           {message}
         </Text>
       ) : null}
@@ -82,13 +92,13 @@ export const Component: React.FC<unknown> = () => {
   const t = useT();
   const { message } = App.useApp();
   const actionRef = useRef<ActionType>();
-  const [selectedRows, setSelectedRows] = useState<any[]>([]);
+  const [selectedRows, setSelectedRows] = useState<Mind.DocumentItem[]>([]);
 
   // 上传文档
   const [uploadVisible, setUploadVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // 上传网站
+  // 抓取网页
   const [websiteVisible, setWebsiteVisible] = useState(false);
   const [websiteSubmitting, setWebsiteSubmitting] = useState(false);
   const [websiteForm] = Form.useForm();
@@ -99,41 +109,38 @@ export const Component: React.FC<unknown> = () => {
   const [previewContent, setPreviewContent] = useState('');
   const [previewName, setPreviewName] = useState('');
 
-  // 队列状态
-  const [queue, setQueue] = useState<any>({});
+  // 索引队列
+  const [queue, setQueue] = useState<Mind.QueueState>({});
   const [queueLoading, setQueueLoading] = useState(false);
 
-  const reloadAll = () => {
-    actionRef.current?.reload();
-    loadQueue();
-  };
-
-  const loadQueue = async () => {
+  const fetchQueueState = async () => {
     try {
-      const [status, health] = await Promise.all([getMindQueueStatus(), getMindQueueHealth()]);
+      const [status, health] = await Promise.all([
+        getMindQueueStatus(),
+        getMindQueueHealth(),
+      ]);
       setQueue({ ...status, ...health });
     } catch {
-      // 忽略队列状态加载失败
+      // 队列状态只用于工具栏展示，取不到不影响文档列表
     }
   };
 
-  useEffect(() => {
-    loadQueue();
-  }, []);
-
-  const handleUpload = (file: File) => {
-    return uploadMindDocument(file)
-      .then(() => {
-        message.success('上传成功，正在后台索引');
-        reloadAll();
-      })
-      .catch(() => {
-        message.error('上传失败');
-        throw new Error('上传失败');
-      });
+  const refreshAll = () => {
+    actionRef.current?.reload();
+    fetchQueueState();
   };
 
-  const handleWebsite = async () => {
+  useEffect(() => {
+    fetchQueueState();
+  }, []);
+
+  const handleUploadDocument = async (file: File) => {
+    await uploadMindDocument(file);
+    message.success('上传成功，正在后台索引');
+    refreshAll();
+  };
+
+  const handleUploadWebsite = async () => {
     const values = await websiteForm.validateFields();
     setWebsiteSubmitting(true);
     try {
@@ -141,19 +148,23 @@ export const Component: React.FC<unknown> = () => {
       message.success('上传成功，正在后台索引');
       setWebsiteVisible(false);
       websiteForm.resetFields();
-      reloadAll();
+      refreshAll();
     } finally {
       setWebsiteSubmitting(false);
     }
   };
 
-  const handlePreview = async (row: any) => {
-    setPreviewName(row.document_name);
+  const handlePreview = async (row: Mind.DocumentItem) => {
+    setPreviewName(row.document_name || '');
     setPreviewVisible(true);
     setPreviewLoading(true);
     try {
-      const res: any = await previewMindDocument(row.document_name, row.document_type);
-      setPreviewContent(res || '');
+      // 预览正文是字符串，拦截器不会展开信封，需从 data 取
+      const res = await previewMindDocument(
+        row.document_name || '',
+        row.document_type || '',
+      );
+      setPreviewContent(res.data || '');
     } catch {
       setPreviewContent('');
     } finally {
@@ -161,50 +172,51 @@ export const Component: React.FC<unknown> = () => {
     }
   };
 
-  const handleDownload = async (row: any) => {
+  const handleDownload = async (row: Mind.DocumentItem) => {
+    const name = row.document_name || '';
     try {
-      const blob: any = await downloadMindDocument(row.document_name);
+      const blob = await downloadMindDocument(name);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = row.document_name;
-      a.click();
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
       URL.revokeObjectURL(url);
     } catch {
       message.error('下载失败');
     }
   };
 
-  const handleRemove = async (rows: any[]) => {
-    await deleteMindDocument(rows.map((r) => r.id));
+  const handleRemove = async (rows: Mind.DocumentItem[]) => {
+    await deleteMindDocument(rows.map((row) => row.id));
     message.success('删除成功');
     setSelectedRows([]);
-    reloadAll();
+    refreshAll();
   };
 
-  const handleReindex = async (rows: any[]) => {
-    const res: any = await reindexMindDocument(rows.map((r) => r.id));
-    message.success(`已加入队列 ${res?.queued ?? rows.length} 个文档`);
-    reloadAll();
+  const handleReindex = async (rows: Mind.DocumentItem[]) => {
+    const res = await reindexMindDocument(rows.map((row) => row.id));
+    message.success(`已加入队列 ${res.queued ?? rows.length} 个文档`);
+    refreshAll();
   };
 
   const handleToggleQueue = async () => {
     setQueueLoading(true);
     try {
-      if (queue?.paused) {
+      if (queue.paused) {
         await resumeMindQueue();
         message.success('队列已恢复');
       } else {
         await pauseMindQueue();
         message.success('队列已暂停');
       }
-      await loadQueue();
+      await fetchQueueState();
     } finally {
       setQueueLoading(false);
     }
   };
 
-  const columns: ProColumns[] = [
+  const columns: ProColumns<Mind.DocumentItem>[] = [
     {
       title: '文档名',
       dataIndex: 'document_name',
@@ -219,7 +231,7 @@ export const Component: React.FC<unknown> = () => {
       width: 100,
       hideInSearch: true,
       render: (_, row) =>
-        row.document_type ? <Tag>{String(row.document_type).toUpperCase()}</Tag> : '-',
+        row.document_type ? <Tag>{row.document_type.toUpperCase()}</Tag> : '-',
     },
     {
       title: '大小(MB)',
@@ -227,7 +239,8 @@ export const Component: React.FC<unknown> = () => {
       valueType: 'text',
       width: 90,
       hideInSearch: true,
-      render: (_, row) => (row.document_size != null ? `${row.document_size} MB` : '-'),
+      render: (_, row) =>
+        row.document_size != null ? `${row.document_size} MB` : '-',
     },
     {
       title: '知识库编号',
@@ -321,7 +334,7 @@ export const Component: React.FC<unknown> = () => {
 
   return (
     <PageContainer header={{ title: '知识库管理' }}>
-      <ProTable
+      <ProTable<Mind.DocumentItem>
         headerTitle="文档列表"
         actionRef={actionRef}
         rowKey="id"
@@ -343,24 +356,24 @@ export const Component: React.FC<unknown> = () => {
           </Button>,
           <Tooltip
             key="queue"
-            title={`队列长度 ${queue?.queue_length ?? 0} · 待处理 ${queue?.enqueued_count ?? 0} · Worker ${
-              queue?.worker_connected ? '已连接' : '未连接'
-            }`}
+            title={`队列长度 ${queue.queue_length ?? 0} · 待处理 ${
+              queue.enqueued_count ?? 0
+            } · Worker ${queue.worker_connected ? '已连接' : '未连接'}`}
           >
             <Button
-              icon={queue?.paused ? <CaretRightOutlined /> : <PauseOutlined />}
+              icon={queue.paused ? <CaretRightOutlined /> : <PauseOutlined />}
               loading={queueLoading}
               onClick={handleToggleQueue}
             >
-              {queue?.paused ? '恢复队列' : '暂停队列'}
+              {queue.paused ? '恢复队列' : '暂停队列'}
             </Button>
           </Tooltip>,
-          <Button key="refresh" icon={<ReloadOutlined />} onClick={reloadAll}>
+          <Button key="refresh" icon={<ReloadOutlined />} onClick={refreshAll}>
             刷新
           </Button>,
         ]}
         request={async (params) => {
-          const res: any = await queryMindDocumentPage({
+          const res = await queryMindDocumentPage({
             current_page: params.current,
             page_size: params.pageSize,
             document_name: params.document_name,
@@ -370,7 +383,7 @@ export const Component: React.FC<unknown> = () => {
           return {
             data: res.records || [],
             total: res.total || 0,
-            success: true,
+            success: res.code === 200,
           };
         }}
         columns={columns}
@@ -381,13 +394,17 @@ export const Component: React.FC<unknown> = () => {
         scroll={{ x: 1300 }}
       />
 
-      {selectedRows?.length > 0 && (
+      {selectedRows.length > 0 && (
         <FooterToolbar
           extra={
             <div>
               <T
                 id="component.table.selection"
-                values={{ num: <a style={{ fontWeight: 600 }}>{selectedRows.length}</a> }}
+                values={{
+                  num: (
+                    <a style={{ fontWeight: 600 }}>{selectedRows.length}</a>
+                  ),
+                }}
               />
             </div>
           }
@@ -399,7 +416,7 @@ export const Component: React.FC<unknown> = () => {
             批量重索引
           </Button>
           <Button
-            onClick={async () => {
+            onClick={() => {
               Modal.confirm({
                 title: t('component.confirm.delete'),
                 content: t('component.confirm.delete.desc'),
@@ -427,9 +444,9 @@ export const Component: React.FC<unknown> = () => {
           accept="*"
           customRequest={({ file, onSuccess, onError }) => {
             setUploading(true);
-            handleUpload(file as File)
+            handleUploadDocument(file as File)
               .then(() => onSuccess?.({}))
-              .catch((e) => onError?.(e))
+              .catch((error) => onError?.(error))
               .finally(() => setUploading(false));
           }}
         >
@@ -437,7 +454,9 @@ export const Component: React.FC<unknown> = () => {
             <InboxOutlined />
           </p>
           <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
-          <p className="ant-upload-hint">支持单个或批量上传，上传后自动进入索引队列</p>
+          <p className="ant-upload-hint">
+            支持单个或批量上传，上传后自动进入索引队列
+          </p>
         </Upload.Dragger>
         <div style={{ textAlign: 'right', marginTop: 16 }}>
           <Button
@@ -445,7 +464,7 @@ export const Component: React.FC<unknown> = () => {
             loading={uploading}
             onClick={() => {
               setUploadVisible(false);
-              reloadAll();
+              refreshAll();
             }}
           >
             完成
@@ -453,12 +472,12 @@ export const Component: React.FC<unknown> = () => {
         </div>
       </Modal>
 
-      {/* 上传网站 */}
+      {/* 抓取网页 */}
       <Modal
         title="上传网站"
         open={websiteVisible}
         onCancel={() => setWebsiteVisible(false)}
-        onOk={handleWebsite}
+        onOk={handleUploadWebsite}
         confirmLoading={websiteSubmitting}
         width={520}
         destroyOnHidden
@@ -498,9 +517,17 @@ export const Component: React.FC<unknown> = () => {
           }}
         >
           {previewLoading ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>加载中…</div>
+            <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+              加载中…
+            </div>
           ) : (
-            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}>
+            <pre
+              style={{
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+                margin: 0,
+              }}
+            >
               {previewContent || '（无预览内容）'}
             </pre>
           )}

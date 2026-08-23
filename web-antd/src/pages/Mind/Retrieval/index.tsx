@@ -1,5 +1,16 @@
 import React, { useRef, useState } from 'react';
-import { Button, Card, Collapse, Empty, Input, Radio, Space, Spin, Tag, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Collapse,
+  Empty,
+  Input,
+  Radio,
+  Space,
+  Spin,
+  Tag,
+  Typography,
+} from 'antd';
 import {
   SearchOutlined,
   StopOutlined,
@@ -14,58 +25,58 @@ import { retrieveRag, retrieveAdvance } from '@/services/mindRetrieval';
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-type Mode = 'rag' | 'advance';
+// 后端流结束时下发的最后一个事件，属于正常收尾，不作为状态提示展示
+const STREAM_FINISHED_EVENT = 'Streaming finished';
 
 export const Component: React.FC<unknown> = () => {
-  const [mode, setMode] = useState<Mode>('rag');
+  const [pattern, setPattern] = useState<Mind.RetrievalPattern>('rag');
   const [query, setQuery] = useState('');
   const [library, setLibrary] = useState('');
   const [loading, setLoading] = useState(false);
 
   const [answer, setAnswer] = useState('');
-  const [thinks, setThinks] = useState<string[]>([]);
+  const [thoughts, setThoughts] = useState<string[]>([]);
   const [events, setEvents] = useState<string[]>([]);
 
   const abortRef = useRef<AbortController | null>(null);
 
-  const resetResult = () => {
+  const clearOutput = () => {
     setAnswer('');
-    setThinks([]);
+    setThoughts([]);
     setEvents([]);
   };
 
-  const handleSearch = async () => {
-    const q = query.trim();
-    if (!q) return;
-    if (loading) return;
+  const handleRetrieve = async () => {
+    const trimmed = query.trim();
+    if (!trimmed || loading) return;
 
-    resetResult();
+    clearOutput();
     setLoading(true);
 
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const params = {
-      query: q,
+    const params: Mind.RetrievalParams = {
+      query: trimmed,
       ...(library.trim() ? { library: library.trim() } : {}),
     };
 
-    const handlers = {
-      onEvent: (payload: string) => setEvents((prev) => [...prev, payload]),
-      onThink: (payload: string) => setThinks((prev) => [...prev, payload]),
-      onData: (payload: string) => setAnswer((prev) => prev + payload),
+    const handlers: Mind.RetrievalHandlers = {
+      onEvent: (payload) => setEvents((prev) => [...prev, payload]),
+      onThink: (payload) => setThoughts((prev) => [...prev, payload]),
+      onData: (payload) => setAnswer((prev) => prev + payload),
       signal: controller.signal,
     };
 
     try {
-      if (mode === 'rag') {
-        await retrieveRag(params, handlers);
-      } else {
-        await retrieveAdvance(params, handlers);
-      }
-    } catch (e: any) {
-      if (e?.name !== 'AbortError') {
-        setEvents((prev) => [...prev, `请求出错：${e?.message || '未知错误'}`]);
+      const retrieve = pattern === 'rag' ? retrieveRag : retrieveAdvance;
+      await retrieve(params, handlers);
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        setEvents((prev) => [
+          ...prev,
+          `请求出错：${error?.message || '未知错误'}`,
+        ]);
       }
     } finally {
       setLoading(false);
@@ -73,17 +84,18 @@ export const Component: React.FC<unknown> = () => {
     }
   };
 
-  const handleStop = () => {
+  const handleAbort = () => {
     abortRef.current?.abort();
   };
 
   const handleClear = () => {
     setQuery('');
     setLibrary('');
-    resetResult();
+    clearOutput();
   };
 
   const lastEvent = events[events.length - 1];
+  const hasOutput = Boolean(answer || thoughts.length || events.length);
 
   return (
     <PageContainer header={{ title: '文档检索' }}>
@@ -91,8 +103,8 @@ export const Component: React.FC<unknown> = () => {
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
           <Space size={24} wrap>
             <Radio.Group
-              value={mode}
-              onChange={(e) => setMode(e.target.value)}
+              value={pattern}
+              onChange={(e) => setPattern(e.target.value)}
               optionType="button"
               buttonStyle="solid"
               options={[
@@ -116,7 +128,7 @@ export const Component: React.FC<unknown> = () => {
             onPressEnter={(e) => {
               if (!e.shiftKey) {
                 e.preventDefault();
-                handleSearch();
+                handleRetrieve();
               }
             }}
           />
@@ -125,13 +137,13 @@ export const Component: React.FC<unknown> = () => {
               type="primary"
               icon={<SearchOutlined />}
               loading={loading}
-              onClick={handleSearch}
+              onClick={handleRetrieve}
               disabled={!query.trim()}
             >
               检索
             </Button>
             {loading && (
-              <Button icon={<StopOutlined />} onClick={handleStop}>
+              <Button icon={<StopOutlined />} onClick={handleAbort}>
                 停止
               </Button>
             )}
@@ -142,7 +154,7 @@ export const Component: React.FC<unknown> = () => {
         </Space>
       </Card>
 
-      {loading && !answer && !thinks.length && (
+      {loading && !answer && !thoughts.length && (
         <Card>
           <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
             <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
@@ -151,24 +163,28 @@ export const Component: React.FC<unknown> = () => {
         </Card>
       )}
 
-      {(answer || thinks.length || events.length) && (
+      {hasOutput && (
         <Card
           title={
             <Space>
               <Text strong>检索结果</Text>
-              {loading ? <Tag color="processing">生成中…</Tag> : <Tag color="success">完成</Tag>}
+              {loading ? (
+                <Tag color="processing">生成中…</Tag>
+              ) : (
+                <Tag color="success">完成</Tag>
+              )}
             </Space>
           }
         >
-          {(thinks.length || events.length) && (
+          {(thoughts.length > 0 || events.length > 0) && (
             <Collapse
               ghost
               size="small"
-              defaultActiveKey={thinks.length ? ['process'] : []}
+              defaultActiveKey={thoughts.length ? ['process'] : []}
               items={[
                 {
                   key: 'process',
-                  label: `检索过程（${thinks.length} 条思考 · ${events.length} 条事件）`,
+                  label: `检索过程（${thoughts.length} 条思考 · ${events.length} 条事件）`,
                   children: (
                     <div
                       style={{
@@ -179,14 +195,28 @@ export const Component: React.FC<unknown> = () => {
                         padding: '12px 16px',
                       }}
                     >
-                      {events.map((e, i) => (
-                        <Paragraph key={`e-${i}`} style={{ marginBottom: 4, color: '#999', fontSize: 12 }}>
-                          <Text code>[事件]</Text> {e}
+                      {events.map((event, index) => (
+                        <Paragraph
+                          key={`event-${index}`}
+                          style={{
+                            marginBottom: 4,
+                            color: '#999',
+                            fontSize: 12,
+                          }}
+                        >
+                          <Text code>[事件]</Text> {event}
                         </Paragraph>
                       ))}
-                      {thinks.map((t, i) => (
-                        <Paragraph key={`t-${i}`} style={{ marginBottom: 4, color: '#666', fontSize: 13 }}>
-                          <Text code>[思考]</Text> {t}
+                      {thoughts.map((thought, index) => (
+                        <Paragraph
+                          key={`thought-${index}`}
+                          style={{
+                            marginBottom: 4,
+                            color: '#666',
+                            fontSize: 13,
+                          }}
+                        >
+                          <Text code>[思考]</Text> {thought}
                         </Paragraph>
                       ))}
                     </div>
@@ -199,7 +229,9 @@ export const Component: React.FC<unknown> = () => {
           <div style={{ marginTop: 12 }}>
             {answer ? (
               <div className="markdown-body">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {answer}
+                </ReactMarkdown>
               </div>
             ) : (
               !loading && <Empty description="暂无结果" />
@@ -211,7 +243,7 @@ export const Component: React.FC<unknown> = () => {
             )}
           </div>
 
-          {lastEvent && lastEvent !== 'Streaming finished' && !loading && (
+          {!loading && lastEvent && lastEvent !== STREAM_FINISHED_EVENT && (
             <div style={{ marginTop: 12, color: '#999', fontSize: 12 }}>
               最后状态：{lastEvent}
             </div>
