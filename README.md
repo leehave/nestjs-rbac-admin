@@ -80,7 +80,7 @@ Set `DB_*`, `REDIS_*`, and a `JWT_SECRET` of at least 32 characters.
 pnpm dev        # Bun watch mode
 ```
 
-`database/init.sql` seeds an `admin` / `admin123` account. Change that password before exposing the service.
+`database/init.sql` seeds schema, menus, and articles, but **no users** — its `sa_system_user` records section is empty. The `admin` / `admin123` account exists because it was inserted by hand; the 2026-07-28 entry in [`CHANGELOG.md`](CHANGELOG.md) records that step. Create the account yourself before the first login, and change the password before exposing the service. The development database also carries test accounts for row-level data scoping — see [Test accounts](#test-accounts).
 
 **4. Start the frontend.**
 
@@ -89,6 +89,75 @@ cd web-antd
 npm install
 npm run dev                    # http://localhost:5173
 ```
+
+## Test accounts
+
+Everything below lives in the local development database and exists to exercise multi-tenancy and row-level data scoping. **None of it is reproducible from the SQL files in `database/`**, which is worth knowing before you try: `init.sql` has an empty `sa_system_user` records section, and its tenant and department rows (`租户1` / `Tenant1`, `腾讯集团`) do not match the ones here. The seed was done by hand — the 2026-07-28 entry in [`CHANGELOG.md`](CHANGELOG.md) records the default tenant, the `admin` account, the user-tenant link, and the `总公司` department; the `user_*` accounts were added afterwards while building out data scoping.
+
+This is development data. None of these credentials belong in a deployed environment.
+
+**Tenant** (`sa_system_tenant`)
+
+| id | `tenant_code` | `tenant_name` | Contact | Limits |
+| --- | --- | --- | --- | --- |
+| 1 | `default` | 默认租户 | 管理员 · 13800000000 · admin@fssadmin.com | 100 users / 10 depts / 10 roles |
+
+`expire_time` is NULL, so the tenant never expires. It is the only tenant in the database.
+
+**Accounts** (`sa_system_user`)
+
+| id | Username | Password | Real name | Dept | `is_super` | Role |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `admin` | `admin123` | 管理员 | 总公司 | 1 | — |
+| 9 | `user_super` | `123456` | 超管测试 | 总公司 | 1 | — |
+| 2 | `user_a` | `123456` | 用户A | 销售部 | 0 | `article_role` |
+| 3 | `user_b` | `123456` | 用户B | 销售一组 | 0 | `article_self` |
+| 4 | `user_c` | `123456` | 销售二组-小王 | 销售二组 | 0 | — |
+| 5 | `user_e` | `123456` | 一组A组-小李 | 销售一组A组 | 0 | — |
+| 6 | `user_d` | `123456` | 技术部-小张 | 技术部 | 0 | — |
+| 7 | `user_f` | `123456` | 销售部-小赵 | 销售部 | 0 | — |
+
+All accounts are enabled (`status = 1`). `admin`'s password is the one recorded in the CHANGELOG seed step, not one read from a seed file; the `user_*` accounts share a single bcrypt hash, which corresponds to `123456`. User IDs are not contiguous — 8 was created and removed during testing.
+
+**Departments** (`sa_system_dept`) — the tree the scope tests run against:
+
+```
+总公司 (1)
+├── 销售部 (10)
+│   ├── 销售一组 (11)
+│   │   └── 销售一组A组 (13)
+│   └── 销售二组 (12)
+└── 技术部 (20)
+```
+
+**What the scoping accounts demonstrate.** Menu 100 (文章管理, `core:article:index`) is the only menu with `is_data_permission = 1`. `sa_system_role_menu_filter` sets a per-role threshold on it:
+
+| Role | Code | Threshold | Account |
+| --- | --- | --- | --- |
+| 文章角色 | `article_role` | 1 — self and subordinates | `user_a` |
+| 仅自己角色 | `article_self` | 0 — own rows only | `user_b` |
+
+Sign in as `user_a` and `user_b` and open 文章管理 to see the same list filtered two different ways. The other `user_*` accounts have departments but no role assignment, so they are useful for widening the tree rather than for comparing thresholds.
+
+**A caveat worth knowing.** `sa_system_user_tenant` contains a single row — `admin` against tenant 1 with `is_default = 1`. None of the `user_*` accounts carry a tenant binding, so they authenticate without one. To bind a test account to the default tenant:
+
+```sql
+INSERT INTO sa_system_user_tenant (user_id, tenant_id, is_super, is_default)
+VALUES (2, 1, 0, 1);
+```
+
+To create a second tenant for cross-tenant testing:
+
+```sql
+INSERT INTO sa_system_tenant
+  (tenant_name, tenant_code, contact_name, contact_phone, contact_email,
+   status, max_users, max_depts, max_roles, remark)
+VALUES
+  ('测试租户', 'test', '测试员', '13900000000', 'test@fssadmin.com',
+   1, 50, 5, 5, '');
+```
+
+Then bind an account to it the same way, and switch tenants from the UI to confirm the data changes underneath.
 
 ## Configuration
 
@@ -189,7 +258,7 @@ cd server && pnpm build && pnpm prod
 
 - The dev proxy port and `APP_PORT` default disagree, as noted in the quick start.
 - The frontend Docker build references a lockfile that is not in the repository.
-- The `init:auth` and `init:auth:dev` scripts in `server/package.json` point at `dist/auth/cli/init-auth.cli.js`, but no corresponding source file exists under `server/src`. Seed the admin account from `database/init.sql` instead.
+- The `init:auth` and `init:auth:dev` scripts in `server/package.json` point at `dist/auth/cli/init-auth.cli.js`, but no corresponding source file exists under `server/src`. There is no replacement: `database/init.sql` carries no user rows, so the admin account has to be inserted by hand (see [Test accounts](#test-accounts)).
 - `getCacheInfo` and `getRedisInfo` in `web-antd/src/services/monitor.ts` call the same endpoint, as do `getUserInfo` in `services/auth.ts` and `getProfile` in `services/system.ts`.
 - Newer pages (`Ai`, `Mind`, `article`) hard-code Chinese strings instead of using the `react-intl` setup that the `System` pages use.
 

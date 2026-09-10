@@ -453,9 +453,31 @@ pnpm run migration:run
 
 ### 5. 管理员账号
 
-`database/init.sql` 已写入默认管理员：`admin` / `admin123`，部署到公网前先改掉。
+**`database/init.sql` 里没有用户数据**：它的 `sa_system_user` 记录段是空的（全文件 0 条用户 INSERT），自带的租户（`租户1` / `Tenant1`）和部门（`腾讯集团`）也与当前开发库中的 `默认租户` / `总公司` 对不上。默认租户、管理员账号、用户-租户关联和「总公司」部门是手工插入的，见根目录 `CHANGELOG.md` 2026-07-28 的「数据库初始化」条目。
 
-> `package.json` 里的 `init:auth` / `init:auth:dev` 指向 `dist/auth/cli/init-auth.cli.js`，但 `src` 下没有对应源文件，脚本跑不起来；`.env.example` 里的 `ADMIN_PASSWORD` 同样没有代码读取。清理掉或补上实现之前，请走上面的 SQL 方式。
+因此空库跑起来需要自己插。先生成密码哈希：
+
+```bash
+# 在 server 目录下执行
+node -e "console.log(require('bcryptjs').hashSync('你的密码', 10))"
+```
+
+再执行（前提：`sa_system_tenant` 中已存在 `id=1` 的租户，建租户的 SQL 见根目录 `README.md` 的 Test accounts 一节）：
+
+```sql
+INSERT INTO sa_system_dept (parent_id, name, code, level, sort, status, tenant_id, remark)
+VALUES (0, '总公司', 'GROUP', '0,', 100, 1, 1, '');
+SET @dept_id := LAST_INSERT_ID();
+
+INSERT INTO sa_system_user (username, password, realname, dept_id, is_super, status)
+VALUES ('admin', '<上面生成的哈希>', '管理员', @dept_id, 1, 1);
+SET @uid := LAST_INSERT_ID();
+
+INSERT INTO sa_system_user_tenant (user_id, tenant_id, is_super, is_default)
+VALUES (@uid, 1, 1, 1);
+```
+
+> `package.json` 里的 `init:auth` / `init:auth:dev` 指向 `dist/auth/cli/init-auth.cli.js`，但 `src` 下没有对应源文件，脚本跑不起来；`.env.example` 里的 `ADMIN_PASSWORD`（第 71 行）同样没有代码读取。清理掉或补上实现之前，请走上面的手工 SQL。
 
 ### 6. 启动开发服务器
 
@@ -563,7 +585,7 @@ pnpm run prod
 ### 生产环境检查清单
 
 - `JWT_SECRET` 替换为强随机字符串（≥32 位）
-- 改掉 `init.sql` 里的默认管理员密码 `admin123`
+- 改掉手工插入的管理员密码（`sa_system_user` 里 `admin` 那条），不要沿用示例密码
 - `DB_SYNC=false`，禁止自动同步表结构
 - `DB_LOGGING=false`，关闭 SQL 日志
 - `DEBUG=false`，开启只读模式
