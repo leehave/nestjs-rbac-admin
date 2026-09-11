@@ -1,7 +1,8 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { BaseEntity } from '../../../../common/entities/base';
 
 @Entity('t_system_model', { comment: '模型管理表' })
-export class MindSystemModelEntity {
+export class MindSystemModelEntity extends BaseEntity {
   @PrimaryColumn({ type: 'varchar', length: 50, name: 'id', comment: '主键id' })
   id: string;
 
@@ -28,7 +29,4 @@ export class MindSystemModelEntity {
 
   @Column({ type: 'varchar', length: 20, name: 'source', nullable: true, comment: '模型来源' })
   source: string | null;
-
-  @Column({ type: 'datetime', name: 'create_time', nullable: true, comment: '创建时间' })
-  createTime: Date | null;
 }

@@ -227,7 +227,7 @@ server/
 │   │   ├── http/                  # HTTP 验证客户端
 │   │   ├── openapi/               # OpenAPI 用例生成
 │   │   └── report/                # Markdown 报告生成
-│   ├── migrations/                # TypeORM 迁移文件
+│   ├── migrations/                # 仅占位（无迁移文件，见「数据库迁移」一节）
 │   ├── prompt/                    # 系统 prompt 模板
 │   └── data-source.ts             # TypeORM DataSource 配置
 ├── api_test_web/                  # API 测试 Web 页面
@@ -424,7 +424,7 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USERNAME=root
 DB_PASSWORD=your_password
-DB_NAME=nestjs
+DB_NAME=rbac_admin
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 JWT_SECRET=your_jwt_secret_at_least_32_chars
@@ -433,23 +433,31 @@ JWT_SECRET=your_jwt_secret_at_least_32_chars
 ### 3. 创建数据库
 
 ```sql
-CREATE DATABASE IF NOT EXISTS `nestjs` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS `rbac_admin` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 ### 4. 初始化数据
 
+**唯一受支持的方式是运行仓库根目录的 SQL 脚本**，按顺序执行：
+
 ```bash
-# 方式一：运行仓库根目录的 SQL 脚本
 mysql -u root -p rbac_admin < ../database/init.sql
 mysql -u root -p rbac_admin < ../database/data-permission.sql
 mysql -u root -p rbac_admin < ../database/web-antd-menu-seed.sql
 mysql -u root -p rbac_admin < ../database/web-antd-mind-menu.sql
-
-# 方式二：运行 TypeORM 迁移
-pnpm run migration:run
-
-# 方式三：同步 Entity（仅开发环境临时使用，需设置 DB_SYNC=true）
 ```
+
+**已有旧库**（在这套 `database/*.sql` 之前建的）再多跑一次对齐脚本，把 `t_*` 表补上审计字段与软删除：
+
+```bash
+mysql -u root -p rbac_admin < ../database/schema-alignment.sql
+```
+
+`schema-alignment.sql` 按 `information_schema` 状态判断每一步是否需要执行，重复跑不会重建表。全新装载 `init.sql` 的库已经是目标结构，跑它是完全空转。
+
+> **`migration:*` 脚本不可用。** `src/data-source.ts` 把 `migrations` 指向 `server/migrations`，而该目录和 `src/migrations` 下都只有一个 `index.html`，没有任何迁移文件 —— `pnpm run migration:run` 找不到东西可执行。表结构的唯一来源是 `database/*.sql`。
+
+> **`DB_SYNC` 也不能用来建表。** `app.module.ts` 里它默认 `false`，且 `NODE_ENV=production` 时无条件强制为 `false`。只有在开发环境下显式设 `DB_SYNC=true`，TypeORM 才会按 Entity 同步表结构。
 
 ### 5. 管理员账号
 
@@ -586,7 +594,7 @@ pnpm run prod
 
 - `JWT_SECRET` 替换为强随机字符串（≥32 位）
 - 改掉手工插入的管理员密码（`sa_system_user` 里 `admin` 那条），不要沿用示例密码
-- `DB_SYNC=false`，禁止自动同步表结构
+- `DB_SYNC=false`，禁止自动同步表结构（`NODE_ENV=production` 时已由 `app.module.ts` 强制，无需依赖配置）
 - `DB_LOGGING=false`，关闭 SQL 日志
 - `DEBUG=false`，开启只读模式
 - 设置 `REDIS_PASSWORD`
@@ -805,19 +813,21 @@ pnpm run verify:api:dev -- --allow-unsafe
 
 ## 数据库迁移
 
-```bash
-# 创建空迁移文件
-pnpm run migration:create -- src/migrations/MigrationName
+**本项目不使用 TypeORM 迁移。** `package.json` 里的 `migration:*` 脚本是可用的，但没有任何迁移文件可执行：
 
-# 根据 Entity 变更生成迁移
-pnpm run migration:generate -- src/migrations/MigrationName
+- `src/data-source.ts` 把 `migrations` 配成 `join(process.cwd(), 'migrations')`，即 `server/migrations`；
+- `server/migrations` 和 `src/migrations` 下都只有一个 `index.html`，没有 `.ts` 迁移文件；
+- 因此 `pnpm run migration:run` 是空转，`migration:generate` 生成的 diff 也没有落地的地方。
 
-# 执行所有未执行迁移
-pnpm run migration:run
+表结构的唯一来源是仓库根目录的 `database/*.sql`。改表时的做法是：
 
-# 回滚最近一次迁移
-pnpm run migration:revert
-```
+1. 改 `server/src/**/entities/*.entity.ts`；
+2. **同步改 `database/init.sql`**，让新建的库直接得到目标结构；
+3. 若已有环境需要平滑升级，再往 `database/` 加一个新的幂等脚本（参考 `data-permission.sql`、`schema-alignment.sql` 的 `information_schema` 检查 + `PREPARE`/`EXECUTE` 写法：字符串里的单引号要双写转义）。
+
+一个容易踩的坑：给表加列之后，`init.sql` 里那种不带列名的定位插入 `INSERT INTO t VALUES (...)` 会直接报 `ERROR 1136 Column count doesn't match value count`，必须改成 `INSERT INTO t (col1, col2, ...) VALUES (...)`。
+
+**部署顺序不能反**：对已存在的库，先把 `database/*.sql` 跑完，再用新版本代码启动。反过来会在新代码读到旧表结构时报 `Unknown column`。
 
 ---
 

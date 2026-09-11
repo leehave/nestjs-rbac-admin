@@ -1,7 +1,8 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { BaseEntity } from '../../../../common/entities/base';
 
 @Entity('t_system_document', { comment: '系统文档附件表' })
-export class MindSystemDocumentEntity {
+export class MindSystemDocumentEntity extends BaseEntity {
   @PrimaryColumn({ type: 'varchar', length: 50, name: 'id', comment: '主键id' })
   id: string;
 
@@ -26,6 +27,7 @@ export class MindSystemDocumentEntity {
   @Column({ type: 'tinyint', name: 'status', default: () => '0', comment: '分析状态：0未完成，1完成' })
   status: number;
 
+  /** 业务字段：上传时间。记录的创建时间由 BaseEntity 的 create_time 承载，迁移时从本列回填。 */
   @Column({ type: 'datetime', name: 'upload_time', nullable: true, comment: '上传时间' })
   uploadTime: Date | null;
 }

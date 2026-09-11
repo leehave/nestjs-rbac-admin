@@ -192,6 +192,6 @@ export class MindModelService {
       .map((v) => v.trim())
       .filter(Boolean);
     if (!ids.length) return;
-    await this.modelRepo.delete(appendTenantWhere({ id: In(ids) }));
+    await this.modelRepo.softDelete(appendTenantWhere({ id: In(ids) }));
   }
 }

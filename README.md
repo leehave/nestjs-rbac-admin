@@ -14,7 +14,7 @@ A full-stack admin system built on NestJS and React. It covers role-based access
 | --- | --- |
 | `server/` | NestJS 11 API. TypeORM over MySQL, Redis for sessions and caching, JWT auth, WebSocket chat gateway, OpenAPI spec. |
 | `web-antd/` | React 18 SPA. Vite, Ant Design 5, Pro Components, Zustand. Routes are generated at runtime from the menu tree the API returns. |
-| `database/` | Schema and seed SQL. Base schema, menu seeds, and the data-permission migration. |
+| `database/` | Schema and seed SQL. Base schema, menu seeds, and two idempotent migrations (`data-permission.sql`, `schema-alignment.sql`). Table structure comes from these files — TypeORM migrations are not used. |
 
 The backend has its own in-depth guide covering module internals, debugging, and PM2 deployment: [`server/README.md`](server/README.md).
 
@@ -22,7 +22,7 @@ The backend has its own in-depth guide covering module internals, debugging, and
 
 **Access control.** Users, roles, menus, departments, and posts, with permission slugs such as `core:user:index` declared per route via `@RequirePermission`. Row-level filtering is applied through `@DataScope`, which resolves the caller's visible user set into an `AsyncLocalStorage` context that services read when building queries.
 
-**Multi-tenancy.** Tenant and user identity travel in an `AsyncLocalStorage` context. A TypeORM subscriber fills `tenantId` and the audit columns on insert and update, so tenant isolation does not depend on every query remembering to filter.
+**Multi-tenancy.** Tenant and user identity travel in an `AsyncLocalStorage` context. A TypeORM subscriber fills `tenantId` and the audit columns on insert and update, so tenant isolation does not depend on every query remembering to filter. This holds for every table: each one inherits `BaseEntity`, so all of them carry `tenant_id`, `created_by`, `updated_by`, and a `delete_time` that makes deletes recoverable.
 
 **Monitoring.** Online sessions, login and operation logs, email logs, server and Redis stats, a database table browser with a recycle bin, and cron-style scheduled jobs.
 
@@ -60,7 +60,13 @@ mysql -h127.0.0.1 -uroot rbac_admin < database/web-antd-menu-seed.sql
 mysql -h127.0.0.1 -uroot rbac_admin < database/web-antd-mind-menu.sql
 ```
 
-The two `web-antd-*` files are idempotent. Menus are cached for 7200s, so re-run them before a fresh login rather than mid-session.
+`init.sql` already produces the final schema, so a fresh install stops there. Only a database created from an **older** `init.sql` needs the alignment pass, which adds the audit and soft-delete columns to the `t_*` tables and creates `sa_system_plugin` / `t_user_profile`:
+
+```bash
+mysql -h127.0.0.1 -uroot rbac_admin < database/schema-alignment.sql
+```
+
+The last three files are idempotent — `schema-alignment.sql` checks `information_schema` before each step and does not rebuild tables, so re-running it is free and a no-op on a fresh install. Menus are cached for 7200s, so re-run the `web-antd-*` seeds before a fresh login rather than mid-session.
 
 **2. Configure the backend.**
 
@@ -175,7 +181,7 @@ All variables are documented inline in [`server/.env.example`](server/.env.examp
 
 `DEBUG=false` puts the API in read-only mode: every POST, PUT, PATCH, and DELETE is rejected unless the route is on the whitelist in `server/src/config/configuration.ts`. Keep it `true` for normal operation.
 
-Set `DB_SYNC=false` in production so TypeORM never alters the schema on boot.
+`DB_SYNC` defaults to `false`, and `app.module.ts` forces it to `false` whenever `NODE_ENV=production`, so TypeORM cannot alter the schema on boot in production regardless of configuration. Set `DB_SYNC=true` only in a development environment, and only if you want the schema to follow the entities.
 
 ## Project structure
 
@@ -261,6 +267,9 @@ cd server && pnpm build && pnpm prod
 - The `init:auth` and `init:auth:dev` scripts in `server/package.json` point at `dist/auth/cli/init-auth.cli.js`, but no corresponding source file exists under `server/src`. There is no replacement: `database/init.sql` carries no user rows, so the admin account has to be inserted by hand (see [Test accounts](#test-accounts)).
 - `getCacheInfo` and `getRedisInfo` in `web-antd/src/services/monitor.ts` call the same endpoint, as do `getUserInfo` in `services/auth.ts` and `getProfile` in `services/system.ts`.
 - Newer pages (`Ai`, `Mind`, `article`) hard-code Chinese strings instead of using the `react-intl` setup that the `System` pages use.
+- The five `t_*` tables came from an upstream project that was ported in whole, so they keep that project's table names alongside this one's `sa_*` convention. Their columns are aligned — same audit fields, same soft delete — but the prefix is not. Renaming them was deliberately avoided to keep the port lossless.
+- The `sa_*` `CREATE TABLE` blocks in `init.sql` are a dump taken before the entities grew their audit columns, so they declare `create_time datetime DEFAULT NULL` where the entities imply `datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)`. The `t_*` blocks were corrected in this pass; the `sa_*` ones were not, so a fresh install drifts from a `DB_SYNC=true` database on those columns.
+- The `migration:*` scripts in `server/package.json` resolve to `server/migrations`, which holds only an `index.html`. There are no TypeORM migrations in this repository; `database/*.sql` is the only source of schema.
 
 ## Documentation
 

@@ -262,7 +262,7 @@ export class MindDocumentService {
       await this.indexTracker.clear(doc.id);
       await this.cleanupVectorAndGraph(tenantId, doc.libraryNumber || '');
     }
-    await this.documentRepo.delete({ tenantId, id: In(ids) } as any);
+    await this.documentRepo.softDelete({ tenantId, id: In(ids) } as any);
   }
 
   async loadRawFile(documentName: string) {

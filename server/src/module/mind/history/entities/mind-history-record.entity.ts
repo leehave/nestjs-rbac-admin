@@ -1,7 +1,8 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { BaseEntity } from '../../../../common/entities/base';
 
 @Entity('t_history_record', { comment: '历史记录表' })
-export class MindHistoryRecordEntity {
+export class MindHistoryRecordEntity extends BaseEntity {
   @PrimaryColumn({ type: 'varchar', length: 50, name: 'id', comment: '主键id' })
   id: string;
 
@@ -25,7 +26,4 @@ export class MindHistoryRecordEntity {
 
   @Column({ type: 'varchar', length: 50, name: 'embedding_model_id', nullable: true, comment: '会话级向量模型ID' })
   embeddingModelId: string | null;
-
-  @Column({ type: 'datetime', name: 'create_time', nullable: true, comment: '创建时间' })
-  createTime: Date | null;
 }

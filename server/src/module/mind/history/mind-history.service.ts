@@ -116,8 +116,8 @@ export class MindHistoryService {
       .filter(Boolean);
     if (!ids.length) return;
 
-    await this.detailRepo.delete(appendTenantWhere({ sourceId: In(ids) }));
-    await this.recordRepo.delete(appendTenantWhere({ id: In(ids) }));
+    await this.detailRepo.softDelete(appendTenantWhere({ sourceId: In(ids) }));
+    await this.recordRepo.softDelete(appendTenantWhere({ id: In(ids) }));
   }
 
   /**
@@ -158,8 +158,18 @@ export class MindHistoryService {
     this.requireTenantId();
     const sourceId = args.source_id;
     if (!sourceId) return;
-    const existed = await this.recordRepo.findOne({ where: appendTenantWhere({ id: sourceId }) });
+    // withDeleted：软删除的行也必须查得到。否则这里返回 null，下面会拿同一个主键
+    // 去 save()，TypeORM 按主键找到那条已软删的行并走 UPDATE，但不会清 delete_time，
+    // 结果是这条会话继续不可见——用户接着聊下去，对话却从历史里消失了。
+    const existed = await this.recordRepo.findOne({
+      where: appendTenantWhere({ id: sourceId }),
+      withDeleted: true,
+    });
     if (existed) {
+      if (existed.deleteTime) {
+        // 复用过一条曾被删除的会话：先恢复它，再继续往上写
+        await this.recordRepo.restore(appendTenantWhere({ id: sourceId }));
+      }
       if (!existed.library && args.library) {
         await this.recordRepo.update(appendTenantWhere({ id: sourceId }), { library: args.library });
       }

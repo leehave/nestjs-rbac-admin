@@ -1,7 +1,8 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { BaseEntity } from '../../../../common/entities/base';
 
 @Entity('t_memory_detail', { comment: '历史详情表' })
-export class MindMemoryDetailEntity {
+export class MindMemoryDetailEntity extends BaseEntity {
   @PrimaryColumn({ type: 'varchar', length: 50, name: 'id', comment: '主键id' })
   id: string;
 
@@ -16,8 +17,5 @@ export class MindMemoryDetailEntity {
 
   @Column({ type: 'longtext', name: 'content', nullable: true, comment: '记忆内容' })
   content: string | null;
-
-  @Column({ type: 'datetime', name: 'create_time', nullable: true, comment: '创建时间' })
-  createTime: Date | null;
 }
 

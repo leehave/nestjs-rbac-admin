@@ -70,7 +70,9 @@ const nodeEnv = process.env.NODE_ENV ?? 'development';
           charset: 'utf8mb4',
           autoLoadEntities: true,
           subscribers: [EntityAuditSubscriber],
-          synchronize: true,
+          // 生产环境强制关闭，避免启动时自动 ALTER 表结构；其余环境由 DB_SYNC 控制
+          // （默认 false）。改表请走 database/*.sql，不要再依赖自动同步。
+          synchronize: nodeEnv === 'production' ? false : config.get('database.synchronize', false),
           logging: config.get('database.logging', false),
         };
         return options as any;
