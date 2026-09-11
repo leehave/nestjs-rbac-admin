@@ -22,7 +22,9 @@ server/.env.*
 !server/.env.example
 
 # Uploads & runtime artifacts
-upload/
+# 必须带前导斜杠锚定到仓库根。写成 upload/ 会匹配任意深度的同名目录，
+# 把 server/src/module/upload（模块源码）一起忽略掉——曾因此在 git 里丢失整个模块。
+/upload/
 
 # IDE
 .idea/

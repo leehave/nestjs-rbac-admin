@@ -2,6 +2,22 @@
 
 ## 2026-09-11
 
+### 监控：修复堆快照被每个请求触发
+
+`memory-monitor.service.ts` 的 `heapUsagePercent` 拿 `heapUsed / heapTotal` 当使用率。`heapTotal` 是 V8 已经向系统申请到的堆，它会跟着 `heapUsed` 一起涨，所以这个比值衡量的是「已申请的那部分填满了多少」，而不是「离堆上限还有多远」——实测堆只用了 3.7MB 时该值就已经是 71.5%，服务真正跑起来后恒在 95% 以上，`heapUsageFatal` 于是持续成立。后果是每次 `checkMemory()`（请求级拦截器、监控定时任务、手动接口都会调）都同步执行一次 `v8.writeHeapSnapshot()`：380MB RSS 下约 1 秒、落盘约 80MB，且阻塞事件循环。实测一个纯常量接口的响应从 2-8ms 涨到 1105ms，6 分钟写出 219 个快照共 17GB。
+
+- 分母改为 `v8.getHeapStatistics().heap_size_limit`（即 `--max-old-space-size`）；取不到时退回 `heapTotal`，宁可高估也不产生 NaN。`MemoryInfo` 新增 `heapLimit` 字段，报告里显示的分母同步改成堆上限，否则百分比和数字对不上。
+- 告警改为**边沿触发**：只在越过阈值那一刻打日志并取证，持续越线不再重复。此前致命状态下每个请求都会刷一条 ERROR。
+- 新增**分级冷却**（warn / fatal 各 10 分钟），限制在阈值附近反复抖动时的落盘速率；`fatalExit=true` 时跳过冷却——进程马上要退出，本来也只会执行一次，不能把最后一份证据省掉。
+- 取证用的时间戳在 `await` 之前落地，并发的 `checkMemory()` 不会重复写同一份快照。
+- `memory-monitor.interceptor.ts` 触发完整检查后重置 `growthCount`。此前计数会永远停在阈值之上，此后每个请求都要跑一次 `checkMemory()`，内存监控反过来拖慢服务。
+
+实测（`NODE_OPTIONS=--max-old-space-size=400`，与 `ecosystem.config.cjs` 一致）：同一接口延迟 1105ms → 中位 6ms，30 次请求产生 0 个快照；持续越线 10 次检查只取证 1 次，回落后再越线仍为 1 次，10 次并发同样只取证 1 次。
+
+### 仓库：`.gitignore` 的 `upload/` 规则吞掉整个模块
+
+`.gitignore` 里的 `upload/` 没有前导斜杠，会匹配任意深度的同名目录，于是 `server/src/module/upload/`（6 个文件、842 行）从未进入版本库——克隆出来的仓库缺这个模块，编译不过。规则改为锚定仓库根的 `/upload/`（运行时的上传目录在仓库根，行为不变），该模块源码随之纳入版本管理。同时纳入此前一直被忽略的 `docs/ai-module.md`（`server/CLAUDE.md` 仍按原样忽略）。
+
 ### 数据库：`t_*` 表对齐 `sa_*` 约定
 
 `init.sql` 里的表原本分成两套互不兼容的约定：`sa_*` 实体继承 `BaseEntity`，有完整审计字段和软删除；从上游 mind 项目整体移植进来的 5 张 `t_*` 表只有 `create_time`，删除是物理删除。本次把后者对齐到前者，**不改表名**（保留移植带来的可读性代价，换取零重命名风险）。

@@ -64,8 +64,11 @@ export class MemoryMonitorInterceptor implements NestInterceptor {
           );
         }
         if (this.growthCount >= this.maxGrowthCount + 5) {
-          // 持续增长，触发完整内存检查
+          // 持续增长，触发完整内存检查。
+          // 触发后必须重新计数：否则计数会永远停在阈值之上，
+          // 变成此后每个请求都跑一次 checkMemory（内存监控反过来拖慢服务）。
           void this.memoryMonitor.checkMemory();
+          this.growthCount = 0;
         }
       } else if (diff < -this.growthThresholdBytes) {
         // 内存下降，重置计数
